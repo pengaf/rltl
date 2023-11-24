@@ -2,7 +2,7 @@
 #include <stdlib.h>
 //#include <math.h>
 
-BEGIN_RLTL_MATH
+BEGIN_RLTL_IMPL
 
 class Random
 {
@@ -18,4 +18,4 @@ public:
 };
 
 
-END_RLTL_MATH
+END_RLTL_IMPL

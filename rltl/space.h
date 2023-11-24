@@ -44,7 +44,20 @@ namespace rltl
 		}
 	protected:
 		int32_t m_start{};
-		int32_t m_count{};
+		uint32_t m_count{};
+	};
+
+	class NormalizedDiscreteSpace : public Space
+	{
+	public:
+		NormalizedDiscreteSpace(const char* name, uint32_t count);
+	public:
+		uint32_t count() const
+		{
+			return m_count;
+		}
+	public:
+		uint32_t m_count;
 	};
 
 
@@ -83,6 +96,8 @@ namespace rltl
 		DataType m_dataType;
 		std::vector<size_t> m_shape;
 	};
+
+
 
 	class CompositeSpace : public Space
 	{

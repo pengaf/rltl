@@ -12,7 +12,7 @@ namespace rltl
 		es_truncated
 	};
 
-	template<typename State_t, typename Action_t, typename Reward_t = float>
+	template<typename StateSpace_t, typename ActionSpace_t, typename Reward_t = float>
     class Environment
     {
 	public:
@@ -20,8 +20,8 @@ namespace rltl
 		typedef Action_t Action_t;
 		typedef Reward_t Reward_t;
 	public:
-		State_t reset(int seed = 0) = 0;
-		EnvironmentStatus step(Reward_t& reward, State_t& nextState, const Action_t& action) = 0;
-		void close() = 0;
+		virtual State_t reset(int seed = 0) = 0;
+		virtual EnvironmentStatus step(Reward_t& reward, State_t& nextState, const Action_t& action) = 0;
+		virtual void close() = 0;
     };
 }

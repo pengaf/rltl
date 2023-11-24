@@ -1,12 +1,8 @@
 #include "value_function.h"
-#include "space.h"
+#include "value_function.mh"
+#include "value_function.ic"
+#include "value_function.mc"
 
 namespace rltl
 {
-	StateValueTable::StateValueTable(DiscreteSpace* space)
-	{
-		m_start = space->start();
-		m_count = space->count();
-		m_values.resize(m_count);
-	}
 }

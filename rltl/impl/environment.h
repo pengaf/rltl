@@ -22,10 +22,10 @@ public:
 	{}
 public:
 	typedef StateSpace_t StateSpace_t;
-	typedef ActionSpace_t ActionSpace_t;
-	typedef Reward_t Reward_t;
 	typedef typename StateSpace_t::Element_t State_t;
+	typedef ActionSpace_t ActionSpace_t;
 	typedef typename ActionSpace_t::Element_t Action_t;
+	typedef Reward_t Reward_t;
 public:
 	const StateSpace_t& stateSpace() const
 	{

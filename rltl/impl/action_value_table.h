@@ -16,7 +16,7 @@ public:
 		m_stateCount(stateCount),
 		m_actionCount(actionCount),
 		m_values(stateCount * actionCount)
-	{}
+	{}	
 public:
 	Value_t getValue(const State_t& state, const Action_t& action) const
 	{

@@ -18,7 +18,7 @@ namespace rltl
 		//EnvironmentStatus step(Reward_t& reward, State_t& nextState, const Action_t& action) = 0;
 		//void close() = 0;
 		Action_t beginEpisode(State_t& state)
-		Action_t step(Reward_t& reward, State_t& nextState, bool terminated);
+		Action_t step(Reward_t& reward, State_t& nextState, bool nonterminal);
 		void endEpisode();
 	};
 

@@ -1,6 +1,6 @@
 #pragma once
 #include "utility.h"
-#include <array>
+#include <type_traits>
 
 BEGIN_RLTL_IMPL
 
@@ -8,43 +8,17 @@ template<typename Element_t, size_t t_size_0, size_t... t_sizes>
 class Array;
 
 template<typename Element_t, size_t t_size_0, size_t... t_sizes>
-class ArrayView
+class ArrayLike
 {
 public:
 	typedef Element_t Element_t;
 	static const size_t t_size_0 = t_size_0;
-	static const size_t t_dims = 1;
+	static const size_t t_dim = 1;
 	static const size_t t_size = t_size_0;
-public:
-	ArrayView(Element_t* elements) :
-		m_elements(elements)
-	{}
-public:
-	Element_t& operator[](size_t pos)
-	{
-		assert(pos < t_size_0);
-		return m_elements[pos];
-	}
 
-	const Element_t& operator[](size_t pos) const
+	static Array<size_t, t_dim> shape()
 	{
-		assert(pos < t_size_0);
-		return m_elements[pos];
-	}
-
-	ArrayView<Element_t, t_size> flatten()
-	{
-		return ArrayView<Element_t, t_size>(m_elements);
-	}
-
-	ArrayView<Element_t, t_size> flatten() const
-	{
-		return ArrayView<Element_t, t_size>(m_elements);
-	}
-
-	static Array<size_t, t_dims> shape()
-	{
-		Array<size_t, t_dims> shp;
+		Array<size_t, t_dim> shp;
 		shp[0] = t_size_0;
 		return shp;
 	}
@@ -54,52 +28,23 @@ public:
 	{
 		shape[offset] = t_size_0;
 	}
-
-public:
-	Element_t* m_elements;
 };
 
+
 template<typename Element_t, size_t t_size_0, size_t t_size_1, size_t... t_sizes>
-class ArrayView<Element_t, t_size_0, t_size_1, t_sizes...>
+class ArrayLike<Element_t, t_size_0, t_size_1, t_sizes...>
 {
 public:
 	typedef Element_t Element_t;
 	static const size_t t_size_0 = t_size_0;
-	typedef ArrayView<Element_t, t_size_1, t_sizes...> SubView_t;
-	static const size_t t_sub_size = SubView_t::t_size;
-	static const size_t t_sub_dims = SubView_t::t_dims;
-	static const size_t t_dims = 1 + t_sub_dims;
+	static const size_t t_sub_size = ArrayLike<Element_t, t_size_1, t_sizes...>::t_size;
+	static const size_t t_sub_dims = ArrayLike<Element_t, t_size_1, t_sizes...>::t_dim;
+	static const size_t t_dim = 1 + t_sub_dims;
 	static const size_t t_size = t_size_0 * t_sub_size;
-public:
-	ArrayView(Element_t* elements) :
-		m_elements(elements)
-	{}
-public:
-	SubView_t operator[](size_t pos)
-	{
-		assert(pos < t_size_0);
-		return SubView_t(&m_elements[pos * t_sub_size]);
-	}
 
-	SubView_t operator[](size_t pos) const
+	static Array<size_t, t_dim> shape()
 	{
-		assert(pos < t_size_0);
-		return SubView_t(&m_elements[pos * t_sub_size]);
-	}
-
-	ArrayView<Element_t, t_size> flatten()
-	{
-		return ArrayView<Element_t, t_size>(m_elements);
-	}
-
-	ArrayView<Element_t, t_size> flatten() const
-	{
-		return ArrayView<Element_t, t_size>(m_elements);
-	}
-
-	static Array<size_t, t_dims> shape()
-	{
-		Array<size_t, t_dims> shp;
+		Array<size_t, t_dim> shp;
 		fill_shape_(shp, 0);
 		return shp;
 	}
@@ -108,23 +53,86 @@ public:
 	static void fill_shape_(Array<size_t, n>& shape, size_t offset)
 	{
 		shape[offset] = t_size_0;
-		SubView_t::fill_shape_(shape, offset + 1);
+		ArrayLike<Element_t, t_size_1, t_sizes...>::fill_shape_(shape, offset + 1);
+	}
+};
+
+template<typename Element_t, size_t t_size_0, size_t... t_sizes>
+class ArrayConstView : public ArrayLike<Element_t, t_size_0, t_sizes...>
+{
+public:
+	ArrayConstView(const Element_t* elements) :
+		m_elements(elements)
+	{}
+
+	const Element_t& operator[](size_t pos) const
+	{
+		assert(pos < t_size_0);
+		return m_elements[pos];
 	}
 
+	//const Element_t& operator[](size_t pos)
+	//{
+	//	assert(pos < t_size_0);
+	//	return m_elements[pos];
+	//}
+
+	ArrayConstView<Element_t, t_size> flatten() const
+	{
+		return ArrayConstView<Element_t, t_size>(m_elements);
+	}
+
+	//ArrayConstView<Element_t, t_size> flatten()
+	//{
+	//	return ArrayConstView<Element_t, t_size>(m_elements);
+	//}
 public:
-	Element_t* m_elements;
+	const Element_t* m_elements;
+};
+
+
+template<typename Element_t, size_t t_size_0, size_t t_size_1, size_t... t_sizes>
+class ArrayConstView<Element_t, t_size_0, t_size_1, t_sizes...> : public ArrayLike<Element_t, t_size_0, t_size_1, t_sizes...>
+{
+public:
+	ArrayConstView(const Element_t* elements) :
+		m_elements(elements)
+	{}
+
+	ArrayConstView<Element_t, t_size_1, t_sizes...> operator[](size_t pos) const
+	{
+		assert(pos < t_size_0);
+		return ArrayConstView<Element_t, t_size_1, t_sizes...>(&m_elements[pos * t_sub_size]);
+	}
+
+	//ArrayConstView<Element_t, t_size_1, t_sizes...> operator[](size_t pos)
+	//{
+	//	assert(pos < t_size_0);
+	//	return ArrayConstView<Element_t, t_size_1, t_sizes...>(&m_elements[pos * t_sub_size]);
+	//}
+
+	ArrayConstView<Element_t, t_size> flatten() const
+	{
+		return ArrayConstView<Element_t, t_size>(m_elements);
+	}
+
+	//ArrayConstView<Element_t, t_size> flatten()
+	//{
+	//	return ArrayConstView<Element_t, t_size>(m_elements);
+	//}
+public:
+	const Element_t* m_elements;
 };
 
 
 template<typename Element_t, size_t t_size_0, size_t... t_sizes>
-class Array
+class ArrayView : public ArrayLike<Element_t, t_size_0, t_sizes...>
 {
 public:
-	typedef Element_t Element_t;
-	static const size_t t_size_0 = t_size_0;
-	static const size_t t_dims = 1;
-	static const size_t t_size = t_size_0;
-public:
+	ArrayView(Element_t* elements) :
+		m_elements(elements)
+	{}
+
 	Element_t& operator[](size_t pos)
 	{
 		assert(pos < t_size_0);
@@ -142,14 +150,113 @@ public:
 		return ArrayView<Element_t, t_size>(m_elements);
 	}
 
-	ArrayView<Element_t, t_size> flatten() const
+	ArrayConstView<Element_t, t_size> flatten() const
+	{
+		return ArrayConstView<Element_t, t_size>(m_elements);
+	}
+public:
+	Element_t* m_elements;
+};
+
+
+template<typename Element_t, size_t t_size_0, size_t t_size_1, size_t... t_sizes>
+class ArrayView<Element_t, t_size_0, t_size_1, t_sizes...> : public ArrayLike<Element_t, t_size_0, t_size_1, t_sizes...>
+{
+public:
+	ArrayView(Element_t* elements) :
+		m_elements(elements)
+	{}
+
+	ArrayView<Element_t, t_size_1, t_sizes...> operator[](size_t pos)
+	{
+		assert(pos < t_size_0);
+		return ArrayView<Element_t, t_size_1, t_sizes...>(&m_elements[pos * t_sub_size]);
+	}
+
+	ArrayConstView<Element_t, t_size_1, t_sizes...> operator[](size_t pos) const
+	{
+		assert(pos < t_size_0);
+		return ArrayConstView<Element_t, t_size_1, t_sizes...>(&m_elements[pos * t_sub_size]);
+	}
+
+	ArrayView<Element_t, t_size> flatten()
 	{
 		return ArrayView<Element_t, t_size>(m_elements);
 	}
 
-	static Array<size_t, t_dims> shape()
+	ArrayConstView<Element_t, t_size> flatten() const
 	{
-		return ArrayView<Element_t, t_size, t_sizes...>::shape();
+		return ArrayConstView<Element_t, t_size>(m_elements);
+	}
+public:
+	Element_t* m_elements;
+};
+
+template<typename Element_t, size_t t_size_0, size_t... t_sizes>
+class Array
+{
+public:
+	typedef Element_t Element_t;
+	static const size_t t_size_0 = t_size_0;
+	static const size_t t_dim = 1;
+	static const size_t t_size = t_size_0;
+
+	static Array<size_t, t_dim> shape()
+	{
+		Array<size_t, t_dim> shp;
+		shp[0] = t_size_0;
+		return shp;
+	}
+
+	template<size_t n>
+	static void fill_shape_(Array<size_t, n>& shape, size_t offset)
+	{
+		shape[offset] = t_size_0;
+	}
+public:
+	typedef ArrayView<Element_t, t_size_0, t_sizes...> View_t;
+	typedef ArrayConstView<Element_t, t_size_0, t_sizes...> ConstView_t;
+public:
+	Element_t& operator[](size_t pos)
+	{
+		assert(pos < t_size_0);
+		return m_elements[pos];
+	}
+
+	const Element_t& operator[](size_t pos) const
+	{
+		assert(pos < t_size_0);
+		return m_elements[pos];
+	}
+
+	ArrayView<Element_t, t_size_0, t_sizes...> view()
+	{
+		return ArrayView<Element_t, t_size_0, t_sizes...>(m_elements);
+	}
+
+	ArrayConstView<Element_t, t_size_0, t_sizes...> view() const
+	{
+		return ArrayConstView<Element_t, t_size_0, t_sizes...>(m_elements);
+	}
+
+	ArrayView<Element_t, t_size> flatten()
+	{
+		return ArrayView<Element_t, t_size>(m_elements);
+	}
+
+	ArrayConstView<Element_t, t_size> flatten() const
+	{
+		return ArrayView<Element_t, t_size>(m_elements);
+	}
+
+	bool operator==(const Array& other) const
+	{
+		return std::equal(&m_elements[0], &m_elements[t_size], &other.m_elements[0]);
+	}
+
+	bool operator!=(const Array& other) const
+	{
+		return !operator=(other);
 	}
 public:
 	Element_t m_elements[t_size];
@@ -161,22 +268,48 @@ class Array<Element_t, t_size_0, t_size_1, t_sizes...>
 public:
 	typedef Element_t Element_t;
 	static const size_t t_size_0 = t_size_0;
-	typedef ArrayView<Element_t, t_size_1, t_sizes...> SubView_t;
-	static const size_t t_sub_size = SubView_t::t_size;
-	static const size_t t_sub_dims = SubView_t::t_dims;
-	static const size_t t_dims = 1 + t_sub_dims;
+	static const size_t t_sub_size = Array<Element_t, t_size_1, t_sizes...>::t_size;
+	static const size_t t_sub_dims = Array<Element_t, t_size_1, t_sizes...>::t_dim;
+	static const size_t t_dim = 1 + t_sub_dims;
 	static const size_t t_size = t_size_0 * t_sub_size;
-public:
-	SubView_t operator[](size_t pos)
+
+	static Array<size_t, t_dim> shape()
 	{
-		assert(pos < t_size_0);
-		return SubView_t(&m_elements[pos * t_sub_size]);
+		Array<size_t, t_dim> shp;
+		fill_shape_(shp, 0);
+		return shp;
 	}
 
-	SubView_t operator[](size_t pos) const
+	template<size_t n>
+	static void fill_shape_(Array<size_t, n>& shape, size_t offset)
+	{
+		shape[offset] = t_size_0;
+		Array<Element_t, t_size_1, t_sizes...>::fill_shape_(shape, offset + 1);
+	}
+public:
+	typedef ArrayView<Element_t, t_size_0, t_size_1, t_sizes...> View_t;
+	typedef ArrayConstView<Element_t, t_size_0, t_size_1, t_sizes...> ConstView_t;
+public:
+	ArrayView<Element_t, t_size_1, t_sizes...> operator[](size_t pos)
 	{
 		assert(pos < t_size_0);
-		return SubView_t(&m_elements[pos * t_sub_size]);
+		return ArrayView<Element_t, t_size_1, t_sizes...>(&m_elements[pos * t_sub_size]);
+	}
+
+	ArrayConstView<Element_t, t_size_1, t_sizes...> operator[](size_t pos) const
+	{
+		assert(pos < t_size_0);
+		return ArrayConstView<Element_t, t_size_1, t_sizes...>(&m_elements[pos * t_sub_size]);
+	}
+
+	ArrayView<Element_t, t_size_0, t_size_1, t_sizes...> view()
+	{
+		return ArrayView<Element_t, t_size_0, t_size_1, t_sizes...>(m_elements);
+	}
+
+	ArrayConstView<Element_t, t_size_0, t_size_1, t_sizes...> view() const
+	{
+		return ArrayConstView<Element_t, t_size_0, t_size_1, t_sizes...>(m_elements);
 	}
 
 	ArrayView<Element_t, t_size> flatten()
@@ -184,17 +317,59 @@ public:
 		return ArrayView<Element_t, t_size>(m_elements);
 	}
 
-	ArrayView<Element_t, t_size> flatten() const
+	ArrayConstView<Element_t, t_size> flatten() const
 	{
-		return ArrayView<Element_t, t_size>(m_elements);
+		return ArrayConstView<Element_t, t_size>(m_elements);
 	}
 
-	static Array<size_t, t_dims> shape()
+	bool operator==(const Array& other) const
 	{
-		return ArrayView<Element_t, t_size_0, t_size_1, t_sizes...>::shape();
+		return std::equal(&m_elements[0], &m_elements[t_size], &other.m_elements[0]);
 	}
+
+	bool operator!=(const Array& other) const
+	{
+		return !operator=(other);
+	}
+
 public:
 	Element_t m_elements[t_size];
+};
+
+
+template<typename T>
+struct GetDimension
+{
+	//static const size_t t_dim = std::is_arithmetic_v<T> ? 1 : T::t_dim;
+	constexpr static size_t dim()
+	{
+		if constexpr (std::is_arithmetic_v<T>)
+		{
+			return 1;
+		}
+		else
+		{
+			return T::t_dim;
+		}
+	}
+};
+
+template<typename T>
+struct GetShape
+{
+	static Array<size_t, GetDimension<T>::dim()> shape()
+	{
+		if constexpr (std::is_arithmetic_v<T>)
+		{
+			Array<size_t, 1> shp;
+			shp[0] = 1;
+			return shp;
+		}
+		else
+		{
+			return T::shape();
+		}
+	}
 };
 
 END_RLTL_IMPL

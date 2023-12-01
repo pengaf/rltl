@@ -4,7 +4,7 @@
 class MountainCar : public rltl::impl::Environment<rltl::impl::BoxSpace<2>, rltl::impl::DiscreteSpace<>>
 {
 public:
-	MountainCar(uint32_t maxStep = 200);
+	MountainCar(uint32_t maxStep = 500);
 public:
 	State_t reset(int seed = 0);
 	rltl::impl::EnvironmentStatus step(Reward_t& reward, State_t& nextState, const Action_t& action);

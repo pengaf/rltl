@@ -28,4 +28,4 @@ set(AllFiles
 add_executable(${ProjectName} ${AllFiles})
 
 #add_library(${ProjectName} SHARED ${AllFiles})
-#target_link_libraries(${ProjectName} "${TORCH_LIBRARIES}")
+target_link_libraries(${ProjectName} "${TORCH_LIBRARIES}")

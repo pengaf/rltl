@@ -46,7 +46,7 @@ public:
 				}
 				else
 				{
-					algorithm.lastStep(reward, nextState, envStatus == EnvironmentStatus::es_terminated);
+					algorithm.lastStep(reward, nextState, envStatus != EnvironmentStatus::es_terminated);
 					break;
 				}
 			}

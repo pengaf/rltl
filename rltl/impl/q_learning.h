@@ -4,13 +4,14 @@
 
 BEGIN_RLTL_IMPL
 
-template<typename ActionValueFunction_t, typename Policy_t = EpsilonGreedy<ActionValueFunction_t>>
+template<typename ActionValueFunction_t, typename Policy_t = EpsilonGreedy<ActionValueFunction_t>, typename Reward_t = float>
 class QLearning
 {
 public:
 	typedef typename ActionValueFunction_t::State_t State_t;
-	typedef typename ActionValueFunction_t::Value_t Reward_t;
+	typedef typename ActionValueFunction_t::Value_t Value_t;
 	typedef typename ActionValueFunction_t::Action_t Action_t;
+	typedef typename Reward_t Reward_t;
 public:
 	QLearning(ActionValueFunction_t& valueFunction, Policy_t& policy, float learningRate, float discountRate = 1.0f) :
 		m_valueFunction(valueFunction),
@@ -25,21 +26,21 @@ public:
 		m_action = m_policy.takeAction(firstState);
 		return m_action;
 	}
-	Action_t nextStep(const Reward_t& reward, const State_t& nextState)
+	Action_t nextStep(Reward_t reward, const State_t& nextState)
 	{
-		ActionValueFunction_t::Value_t value = m_valueFunction.getValue(m_state, m_action);
-		ActionValueFunction_t::Value_t target = reward + m_valueFunction.firstMaxValue(nextState) * m_discountRate;
-		ActionValueFunction_t::Value_t newValue = value + (target - value) * m_learningRate;
+		Value_t value = m_valueFunction.getValue(m_state, m_action);
+		Value_t target = reward + m_valueFunction.firstMaxValue(nextState) * m_discountRate;
+		Value_t newValue = value + (target - value) * m_learningRate;
 		m_valueFunction.setValue(m_state, m_action, newValue);
 		m_state = nextState;
 		m_action = m_policy.takeAction(nextState);
 		return m_action;
 	}
-	void lastStep(const Reward_t& reward, const State_t& nextState, bool terminated)
+	void lastStep(Reward_t reward, const State_t& nextState, bool nonterminal)
 	{
 		ActionValueFunction_t::Value_t value = m_valueFunction.getValue(m_state, m_action);
 		ActionValueFunction_t::Value_t target = reward;
-		if (!terminated)
+		if (nonterminal)
 		{
 			target += m_valueFunction.firstMaxValue(nextState) * m_discountRate;
 		}

@@ -28,6 +28,7 @@ set(impl
 "impl/agent.h"
 "impl/algorithm.h"
 "impl/array.h"
+"impl/callback.h"
 "impl/deep_q_network.h"
 "impl/environment.h"
 "impl/epsilon_greedy.h"
@@ -35,6 +36,7 @@ set(impl
 "impl/mlp_q_net.h"
 "impl/monte_carlo_control.h"
 "impl/monte_carlo_prediction.h"
+"impl/neural_network.h"
 "impl/q_learning.h"
 "impl/random.h"
 "impl/reinforce.h"
@@ -54,21 +56,12 @@ set(math
 )
 source_group("math" FILES ${math})
 
-
-set(nn
-"nn/utility.h"
-"nn/tensor.h"
-)
-source_group("nn" FILES ${nn})
-
-
 set(AllFiles
 	${InterfaceFiles}
     ${HeaderFiles}
     ${SourceFiles}
     ${impl}
     ${math}
-    ${nn}
 )
 
 foreach(InterfaceFile IN LISTS InterfaceFiles)

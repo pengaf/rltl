@@ -71,25 +71,46 @@ public:
 	typedef typename ActionValueFunction_t::Action_t Action_t;
 	typedef typename ActionValueFunction_t::Value_t Value_t;
 public:
-	LinearDecayEpsilonGreedy(ActionValueFunction_t& valueFunction, float startEpsilon, float endEpsilon, uint32_t decaySteps) :
+	LinearDecayEpsilonGreedy(ActionValueFunction_t& valueFunction, float startEpsilon, float endEpsilon, uint32_t decaySteps, uint32_t startDecayStep = 0) :
 		m_valueFunction(valueFunction),
 		m_actionCount(valueFunction.actionCount()),
 		m_epsilon(startEpsilon),
 		m_startEpsilon(startEpsilon),
 		m_endEpsilon(endEpsilon),
 		m_decaySteps(decaySteps),
+		m_startDecayStep(startDecayStep),
 		m_steps(0)
 	{}
 public:
-	float getEpsilon(float epsilon) const
+	float getEpsilon() const
 	{
 		return m_epsilon;
 	}
+	void setEpsilon(float epsilon)
+	{
+		m_epsilon = epsilon;
+	}
 	Action_t takeAction(const State_t& state)
 	{
+		if (m_steps < m_startDecayStep + m_decaySteps)
+		{
+			++m_steps;
+		}
+		if (m_steps < m_startDecayStep)
+		{
+			m_epsilon = m_startEpsilon;
+		}
+		else if (m_steps <= m_startDecayStep + m_decaySteps)
+		{
+			m_epsilon = m_startEpsilon + (m_endEpsilon - m_startEpsilon)*(m_steps - m_startDecayStep) / (m_decaySteps);
+		}
+		else
+		{
+			m_epsilon = m_endEpsilon;
+		}
 		if (rltl::math::Random::rand() < m_epsilon)
 		{
-			return rltl::math::Random::randint() % m_actionCount;
+			return rltl::math::Random::randint(m_actionCount) % m_actionCount;
 		}
 		else
 		{
@@ -101,11 +122,6 @@ public:
 			{
 				return m_valueFunction.firstMaxAction(state);
 			}
-		}
-		if (m_steps < m_decaySteps)
-		{
-			++m_steps;
-			m_epsilon = m_startEpsilon + (m_endEpsilon - m_startEpsilon)*double(m_steps)/double(m_decaySteps);
 		}
 	}
 	Value_t getExpectedValue(const State_t& state)
@@ -119,7 +135,15 @@ protected:
 	float m_startEpsilon;
 	float m_endEpsilon;
 	uint32_t m_decaySteps;
+	uint32_t m_startDecayStep;
 	uint32_t m_steps;
 };
+
+template<typename ActionValueFunction_t>
+inline static LinearDecayEpsilonGreedy<ActionValueFunction_t> MakeLinearDecayEpsilonGreedy(ActionValueFunction_t& valueFunction, float startEpsilon, float endEpsilon, uint32_t decaySteps, uint32_t startDecayStep = 0)
+{
+	return LinearDecayEpsilonGreedy(valueFunction, startEpsilon, endEpsilon, decaySteps, startDecayStep);
+}
+
 
 END_RLTL_IMPL

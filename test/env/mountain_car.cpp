@@ -35,6 +35,7 @@ rltl::impl::EnvironmentStatus MountainCar::step(Reward_t& reward, State_t& nextS
 	m_currentState = { px, vx };
 	nextState = m_currentState;
 	reward = -1.0f;
+
 	if (terminated)
 	{
 		return rltl::impl::EnvironmentStatus::es_terminated;

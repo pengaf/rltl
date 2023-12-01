@@ -18,14 +18,14 @@ public:
 		m_action = m_explorator.takeAction(firstState);
 		return m_action;
 	}
-	Action_t nextStep(const Reward_t& reward, const State_t& nextState)
+	Action_t nextStep(Reward_t reward, const State_t& nextState)
 	{
 		m_trajectory.emplace_back(m_state, m_action, reward);
 		m_state = nextState;
 		m_action = m_explorator.takeAction(nextState);
 		return m_action;
 	}
-	void lastStep(const Reward_t& reward, const State_t& nextState, bool terminated)
+	void lastStep(Reward_t reward, const State_t& nextState, bool nonterminal)
 	{
 		m_trajectory.emplace_back(m_state, m_action, reward);
 		StateValueFunction_t::Value_t g = 0;

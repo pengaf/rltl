@@ -51,7 +51,7 @@ inline void train(Environment_t& environment, Agent_t& agent, uint32_t numEpisod
 			}
 			else
 			{
-				agent.lastStep(reward, nextState, envStatus == EnvironmentStatus::es_terminated);
+				agent.lastStep(reward, nextState, envStatus != EnvironmentStatus::es_terminated);
 				if (callback)
 				{
 					callback->endEpisode(numEpisodes, episode, totalStep, totalReward);
@@ -91,7 +91,7 @@ public:
 				}
 				else
 				{
-					agent.lastStep(reward, nextState, envStatus == EnvironmentStatus::es_terminated);
+					agent.lastStep(reward, nextState, envStatus != EnvironmentStatus::es_terminated);
 					break;
 				}
 			}
@@ -110,7 +110,7 @@ public:
 //		m_state = state;
 //		return m_agent.takeAction(state);
 //	}
-//	Action_t nextStep(const Reward_t& reward, const State_t& nextState, bool terminated)
+//	Action_t nextStep(Reward_t reward, const State_t& nextState, bool nonterminal)
 //	{
 //		SR sr;
 //		sr.state = m_state;
@@ -155,7 +155,7 @@ public:
 //		m_state = state;
 //		return m_valueFunction.takeAction(state);
 //	}
-//	Action_t step(const Reward_t& reward, const State_t& nextState, bool terminated)
+//	Action_t step(Reward_t reward, const State_t& nextState, bool nonterminal)
 //	{
 //		SR sr;
 //		sr.state = m_state;

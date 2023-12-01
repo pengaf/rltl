@@ -1,6 +1,6 @@
 #pragma once
 #include "utility.h"
-#include <array>
+#include "array.h"
 
 BEGIN_RLTL_IMPL
 
@@ -65,7 +65,7 @@ public:
 	typedef MultiDiscreteSpaceTag SpaceTag_t;
 	typedef Integer_t Numeric_t;
 	enum { t_dimension = t_dimension};
-	typedef std::array<Integer_t, t_dimension> Element_t;
+	typedef Array<Integer_t, t_dimension> Element_t;
 public:
 	MultiDiscreteSpace(Element_t begin, Element_t end) :
 		m_begin(begin),
@@ -173,7 +173,7 @@ public:
 	typedef BoxSpaceTag SpaceTag_t;
 	typedef Real_t Numeric_t;
 	enum { t_dimension = t_dimension };
-	typedef std::array<Real_t, t_dimension> Element_t;
+	typedef Array<Real_t, t_dimension> Element_t;
 public:
 	BoxSpace(Element_t low, Element_t high) :
 		m_low(low),

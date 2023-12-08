@@ -1,11 +1,13 @@
 #pragma once
 #include "utility.h"
 #include "array.h"
+#include "random.h"
 #include <torch/torch.h>
 
 BEGIN_RLTL_IMPL
 
 typedef torch::Tensor Tensor;
+typedef torch::optim::Optimizer Optimizer;
 
 template<typename T, size_t N, typename Element_t, size_t t_size_0, size_t... t_sizes>
 struct ArrayConstViewToTensorAccessor
@@ -204,9 +206,53 @@ inline void assign(Element_t& value, const torch::TensorAccessor<T, 1>& tensorAc
 	value = tensorAccessor[0];
 }
 
-template<typename Network_t, typename State_t, typename Action_t>
-inline Action_t NN_firstMaxAction(Network_t& network, const State_t& state)
+template<typename Network_t, typename State_t>
+inline float NN_getStateValue(Network_t& network, const State_t& state)
 {
+	auto shape = GetShape<State_t>::shape();
+	std::array<int64_t, GetDimension<State_t>::dim() + 1> tensorShape;
+	tensorShape[0] = 1;
+	for (size_t i = 0; i < State_t::t_dim; ++i)
+	{
+		tensorShape[i + 1] = shape[i];
+	}
+	torch::Tensor stateTensor = torch::empty(tensorShape, torch::TensorOptions().dtype(torch::kFloat32));
+	auto stateAccessor = stateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
+	assign(stateAccessor[0], state);
+	torch::Tensor valueTensor = network->forward(stateTensor);
+	auto valueAccessor = valueTensor.accessor<int64_t, 2>();
+	float value;
+	assign(value, valueAccessor[0]);
+	return value;
+}
+
+template<typename Network_t, typename State_t>
+inline void NN_getStateValues(std::vector<float>& values, Network_t& network, const State_t& state)
+{
+	auto shape = GetShape<State_t>::shape();
+	std::array<int64_t, GetDimension<State_t>::dim() + 1> tensorShape;
+	tensorShape[0] = 1;
+	for (size_t i = 0; i < State_t::t_dim; ++i)
+	{
+		tensorShape[i + 1] = shape[i];
+	}
+	torch::Tensor stateTensor = torch::empty(tensorShape, torch::TensorOptions().dtype(torch::kFloat32));
+	auto stateAccessor = stateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
+	assign(stateAccessor[0], state);
+	torch::Tensor valueTensor = network->forward(stateTensor);
+	auto valueAccessor = valueTensor.accessor<int64_t, 2>();	
+	size_t count = valueTensor.size(1);
+	values.resize(count);
+	for (uint32_t i = 0; i < m_actionCount; ++i)
+	{
+		values[i] = valueAccessor[0][i];
+	}
+}
+
+template<typename Network_t, typename State_t, typename Action_t>
+inline Action_t NN_actionByArgmax(Network_t& network, const State_t& state)
+{
+	assert(GetDimension<Action_t>::dim() == 1);
 	auto shape = GetShape<State_t>::shape();
 	std::array<int64_t, GetDimension<State_t>::dim() + 1> tensorShape;
 	tensorShape[0] = 1;
@@ -222,12 +268,39 @@ inline Action_t NN_firstMaxAction(Network_t& network, const State_t& state)
 	auto actionAccessor = actionTensor.accessor<int64_t, GetDimension<Action_t>::dim()>();
 	Action_t action;
 	assign(action, actionAccessor);
+	return action;
+}
 
-	static int ac[3] = { 0,0,0 };
-	ac[action]++;
-	//printf("ac: %d,%d,%d\n", ac[0], ac[1], ac[2]);
-	//std::cout << actionValueTensor << "action:" << actionTensor << std::endl;
+template<typename Network_t, typename State_t, typename Action_t>
+inline Action_t NN_actionBySoftmax(Network_t& network, const State_t& state)
+{
+	assert(GetDimension<Action_t>::dim() == 1);
+	auto shape = GetShape<State_t>::shape();
+	std::array<int64_t, GetDimension<State_t>::dim() + 1> tensorShape;
+	tensorShape[0] = 1;
+	for (size_t i = 0; i < State_t::t_dim; ++i)
+	{
+		tensorShape[i + 1] = shape[i];
+	}
+	torch::Tensor stateTensor = torch::empty(tensorShape, torch::TensorOptions().dtype(torch::kFloat32));
+	auto stateAccessor = stateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
+	assign(stateAccessor[0], state);
+	torch::Tensor probTensor = torch::nn::functional::softmax(network->forward(stateTensor), 1);
+	size_t probSize = probTensor.size(1);
 
+	Action_t action = probSize - 1;
+	auto probAccessor = probTensor.accessor<float, 2>();
+	float rnd = Random::rand();
+	for (size_t i = 0; i < probSize; ++i)
+	{
+		float prob = probAccessor[0][i];
+		if (rnd <= prob)
+		{
+			action = i;
+			break;
+		}
+		rnd -= prob;
+	}
 	return action;
 }
 

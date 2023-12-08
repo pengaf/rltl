@@ -7,7 +7,7 @@ public:
 	CliffWalking();
 public:
 	State_t reset(int seed = 0);
-	rltl::impl::EnvironmentStatus step(Reward_t& reward, State_t& nextState, const Action_t& action);
+	rltl::impl::EnvironmentStatus step(float& reward, State_t& nextState, const Action_t& action);
 	void close(){}
 private:
 	StateSpace_t m_stateSpace;
@@ -28,7 +28,7 @@ public:
 	CliffWalking2();
 public:
 	State_t reset(int seed = 0);
-	rltl::impl::EnvironmentStatus step(Reward_t& reward, State_t& nextState, const Action_t& action);
+	rltl::impl::EnvironmentStatus step(float& reward, State_t& nextState, const Action_t& action);
 	void close() {}
 private:
 	StateSpace_t m_stateSpace;

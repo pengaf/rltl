@@ -23,7 +23,7 @@ CliffWalking::State_t CliffWalking::reset(int seed)
 	return m_currentX + m_currentY * m_width;
 }
 
-rltl::impl::EnvironmentStatus CliffWalking::step(Reward_t& reward, State_t& nextState, const Action_t& action)
+rltl::impl::EnvironmentStatus CliffWalking::step(float& reward, State_t& nextState, const Action_t& action)
 {
 	switch (action)
 	{
@@ -72,7 +72,7 @@ CliffWalking2::State_t CliffWalking2::reset(int seed)
 	return m_currentState;
 }
 
-rltl::impl::EnvironmentStatus CliffWalking2::step(Reward_t& reward, State_t& nextState, const Action_t& action)
+rltl::impl::EnvironmentStatus CliffWalking2::step(float& reward, State_t& nextState, const Action_t& action)
 {
 	switch (action)
 	{

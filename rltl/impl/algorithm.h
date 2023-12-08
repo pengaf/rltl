@@ -19,11 +19,9 @@ inline void train(Environment_t& environment, Agent_t& agent, uint32_t numEpisod
 {
 	static_assert(std::is_same_v<Environment_t::State_t, Agent_t::State_t>);
 	static_assert(std::is_same_v<Environment_t::Action_t, Agent_t::Action_t>);
-	static_assert(std::is_same_v<Environment_t::Reward_t, Agent_t::Reward_t>);
 
 	typedef Agent_t::State_t State_t;
 	typedef Agent_t::Action_t Action_t;
-	typedef Agent_t::Reward_t Reward_t;
 	if (callback)
 	{
 		callback->beginTrain(numEpisodes);
@@ -40,7 +38,7 @@ inline void train(Environment_t& environment, Agent_t& agent, uint32_t numEpisod
 		float totalReward = 0;
 		while (true)
 		{
-			Reward_t reward;
+			float reward;
 			State_t nextState;
 			EnvironmentStatus envStatus = environment.step(reward, nextState, action);
 			++totalStep;
@@ -67,41 +65,10 @@ inline void train(Environment_t& environment, Agent_t& agent, uint32_t numEpisod
 
 }
 
-template<typename Environment_t, typename Agent_t>
-class Train
-{
-public:
-	void train(Environment_t& environment, Agent_t& agent, int32_t numEpisodes)
-	{
-		typedef Environment_t::State_t State_t;
-		typedef Environment_t::Action_t Action_t;
-		typedef Environment_t::Reward_t Reward_t;
-		for (int32_t episode = 0; episode < numEpisodes; ++episode)
-		{
-			State_t state = environment.reset();
-			Action_t action = agent.firstStep(state);
-			while (true)
-			{
-				Reward_t reward;
-				State_t nextState;
-				EnvironmentStatus envStatus = environment.step(reward, nextState, action);
-				if (EnvironmentStatus::es_normal == envStatus)
-				{
-					action = agent.nextStep(reward, nextState);
-				}
-				else
-				{
-					agent.lastStep(reward, nextState, envStatus != EnvironmentStatus::es_terminated);
-					break;
-				}
-			}
-		}
-	}
-};
 
 
 
-//template<typename State_t, typename Action_t, typename Reward_t, typename StateValueFunction_t>
+//template<typename State_t, typename Action_t, typename StateValueFunction_t>
 //class MonteCarloPrediction
 //{
 //public:
@@ -110,7 +77,7 @@ public:
 //		m_state = state;
 //		return m_agent.takeAction(state);
 //	}
-//	Action_t nextStep(Reward_t reward, const State_t& nextState, bool nonterminal)
+//	Action_t nextStep(float reward, const State_t& nextState, bool nonterminal)
 //	{
 //		SR sr;
 //		sr.state = m_state;
@@ -120,14 +87,14 @@ public:
 //	}
 //	void endEpisode()
 //	{
-//		StateValueFunction_t::Value_t g = 0;
+//		StateValueFunction_t::float g = 0;
 //		size_t count = m_stateRewards.size();
 //		for (size_t i = 0; i < count; ++i)
 //		{
 //			SR& sr = m_stateRewards[count - 1 - i];
 //			g = g * m_discountRate + sr.reward;
-//			StateValueFunction_t::Value_t value = m_valueFunction.getValue(sr.state);
-//			StateValueFunction_t::Value_t newValue = value + (g - value) * m_learningRate;
+//			StateValueFunction_t::float value = m_valueFunction.getValue(sr.state);
+//			StateValueFunction_t::float newValue = value + (g - value) * m_learningRate;
 //			m_valueFunction.setValue(sr.state, newValue);
 //		}
 //	}
@@ -135,7 +102,7 @@ public:
 //	struct SR
 //	{
 //		State_t state;
-//		Reward_t reward;
+//		float reward;
 //	};
 //	float m_discountRate;
 //	float m_learningRate;
@@ -146,7 +113,7 @@ public:
 //};
 
 
-//template<typename State_t, typename Action_t, typename Reward_t, typename StateValueFunction_t>
+//template<typename State_t, typename Action_t, typename StateValueFunction_t>
 //class TemporalDifferencePrediction
 //{
 //public:
@@ -155,7 +122,7 @@ public:
 //		m_state = state;
 //		return m_valueFunction.takeAction(state);
 //	}
-//	Action_t step(Reward_t reward, const State_t& nextState, bool nonterminal)
+//	Action_t step(float reward, const State_t& nextState, bool nonterminal)
 //	{
 //		SR sr;
 //		sr.state = m_state;
@@ -165,14 +132,14 @@ public:
 //	}
 //	void endEpisode()
 //	{
-//		StateValueFunction_t::Value_t g = 0;
+//		StateValueFunction_t::float g = 0;
 //		size_t count = m_stateRewards.size();
 //		for (size_t i = 0; i < count; ++i)
 //		{
 //			SR& sr = m_stateRewards[count - 1 - i];
 //			g = g * m_discountRate + sr.reward;
-//			StateValueFunction_t::Value_t value = m_valueFunction.getValue(sr.state);
-//			StateValueFunction_t::Value_t newValue = value + (g - value) * m_learningRate;
+//			StateValueFunction_t::float value = m_valueFunction.getValue(sr.state);
+//			StateValueFunction_t::float newValue = value + (g - value) * m_learningRate;
 //			m_valueFunction.setValue(sr.state, newValue);
 //		}
 //	}

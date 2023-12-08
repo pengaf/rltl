@@ -20,7 +20,7 @@ MountainCar::State_t MountainCar::reset(int seed)
 	return m_currentState;
 }
 
-rltl::impl::EnvironmentStatus MountainCar::step(Reward_t& reward, State_t& nextState, const Action_t& action)
+rltl::impl::EnvironmentStatus MountainCar::step(float& reward, State_t& nextState, const Action_t& action)
 {
 	float px = m_currentState[0];
 	float vx = m_currentState[1];

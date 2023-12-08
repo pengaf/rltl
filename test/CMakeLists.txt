@@ -11,6 +11,8 @@ set(SourceFiles
 source_group("Source Files" FILES ${SourceFiles})
 
 set(env
+"env/cart_pole.h"
+"env/cart_pole.cpp"
 "env/cliff_walking.h"
 "env/cliff_walking.cpp"
 "env/mountain_car.h"

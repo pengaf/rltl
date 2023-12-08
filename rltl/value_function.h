@@ -7,7 +7,7 @@ namespace paf{ class ClassType; }
 
 namespace rltl
 {
-	template <typename State_t,typename Value_t>
+	template <typename State_t>
 	class StateValueFunction
 	{
 	public:
@@ -24,14 +24,14 @@ namespace rltl
 
 	public:
 		typedef State_t State_t;
-		typedef Value_t Value_t;
+		
 
-		virtual Value_t getValue(State_t const & state)const ;
-		virtual void setValue(State_t const & state,Value_t const & value);
+		virtual float getValue(State_t const & state)const ;
+		virtual void setValue(State_t const & state,float const & value);
 	};
 
 
-	template <typename State_t,typename Action_t,typename Value_t>
+	template <typename State_t,typename Action_t>
 	class ActionValueFunction
 	{
 	public:
@@ -49,14 +49,14 @@ namespace rltl
 	public:
 		typedef State_t State_t;
 		typedef Action_t Action_t;
-		typedef Value_t Value_t;
+		
 	public:
 
-		virtual Value_t getValue(State_t const & state,Action_t const & action)const ;
+		virtual float getValue(State_t const & state,Action_t const & action)const ;
 	};
 
-	template <typename State_t,typename Action_t,typename Value_t>
-	class ActionValueTable : public ActionValueFunction<State_t, Action_t, Value_t>
+	template <typename State_t,typename Action_t>
+	class ActionValueTable : public ActionValueFunction<State_t, Action_t, float>
 	{
 	public:
 		static ::paf::ClassType* GetType();

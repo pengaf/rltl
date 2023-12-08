@@ -3,14 +3,12 @@
 
 BEGIN_RLTL_IMPL
 
-template<typename StateValueFunction_t, typename Policy_t, typename Reward_t = float>
+template<typename StateValueFunction_t, typename Policy_t>
 class TemporalDifferencePrediction
 {
 public:
 	typedef typename StateValueFunction_t::State_t State_t;
-	typedef typename StateValueFunction_t::Value_t Value_t;
 	typedef typename Policy_t::Action_t Action_t;
-	typedef typename Reward_t Reward_t;
 public:
 	TemporalDifferencePrediction(StateValueFunction_t& valueFunction, Policy_t& policy, float learningRate, float discountRate = 1.0f) :
 		m_valueFunction(valueFunction),
@@ -24,25 +22,25 @@ public:
 		Action_t action = m_policy.takeAction(firstState);
 		return action;
 	}
-	Action_t nextStep(Reward_t reward, const State_t& nextState)
+	Action_t nextStep(float reward, const State_t& nextState)
 	{
-		Value_t value = m_valueFunction.getValue(m_state);
-		Value_t target = reward + m_valueFunction.getValue(nextState) * m_discountRate;
-		Value_t newValue = value + (target - value) * m_learningRate;
+		float value = m_valueFunction.getValue(m_state);
+		float target = reward + m_valueFunction.getValue(nextState) * m_discountRate;
+		float newValue = value + (target - value) * m_learningRate;
 		m_valueFunction.setValue(m_state, newValue);
 		m_state = nextState;
 		Action_t action = m_policy.takeAction(nextState);
 		return action;
 	}
-	void lastStep(Reward_t reward, const State_t& nextState, bool nonterminal)
+	void lastStep(float reward, const State_t& nextState, bool nonterminal)
 	{
-		ActionValueFunction_t::Value_t value = m_valueFunction.getValue(m_state);
-		ActionValueFunction_t::Value_t target = reward;
+		float value = m_valueFunction.getValue(m_state);
+		float target = reward;
 		if (nonterminal)
 		{
 			target += m_valueFunction.getValue(nextState) * m_discountRate;
 		}
-		ActionValueFunction_t::Value_t newValue = value + (target - value) * m_learningRate;
+		float newValue = value + (target - value) * m_learningRate;
 		m_valueFunction.setValue(m_state, newValue);
 	}
 protected:

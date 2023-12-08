@@ -3,16 +3,33 @@
 
 BEGIN_RLTL_IMPL
 
+class EpisodeCallback
+{
+public:
+	virtual void beginTrain(uint32_t numEpisodes)
+	{}
+	virtual void beginEpisode(uint32_t numEpisodes, uint32_t episode)
+	{}
+	virtual void endEpisode(uint32_t numEpisodes, uint32_t episode, uint32_t totalStep, float totalReward)
+	{}
+	virtual void endTrain(uint32_t numEpisodes)
+	{}
+};
+
 class Callback
 {
 public:
-	void beginTrain(uint32_t numEpisodes)
+	virtual void beginTrain(uint32_t numEpisodes)
 	{}
-	void beginEpisode(uint32_t numEpisodes, uint32_t episode)
+	virtual void beginEpisode(uint32_t numEpisodes, uint32_t episode)
 	{}
-	void endEpisode(uint32_t numEpisodes, uint32_t episode, uint32_t totalStep, float totalReward)
+	virtual void beginStep(uint32_t numEpisodes, uint32_t episode, uint32_t step)
 	{}
-	void endTrain(uint32_t numEpisodes)
+	virtual void endStep(uint32_t numEpisodes, uint32_t episode, uint32_t step, float reward)
+	{}
+	virtual void endEpisode(uint32_t numEpisodes, uint32_t episode, uint32_t totalStep, float totalReward)
+	{}
+	virtual void endTrain(uint32_t numEpisodes)
 	{}
 };
 

@@ -12,7 +12,7 @@ enum class EnvironmentStatus
 	es_truncated
 };
 
-template<typename StateSpace_t, typename ActionSpace_t, typename Reward_t = float>
+template<typename StateSpace_t, typename ActionSpace_t>
 class Environment
 {
 public:
@@ -25,7 +25,6 @@ public:
 	typedef typename StateSpace_t::Element_t State_t;
 	typedef ActionSpace_t ActionSpace_t;
 	typedef typename ActionSpace_t::Element_t Action_t;
-	typedef Reward_t Reward_t;
 public:
 	const StateSpace_t& stateSpace() const
 	{
@@ -40,7 +39,7 @@ protected:
 	const ActionSpace_t& m_actionSpace;
 	//concept
 	//State_t reset(int seed = 0);
-	//EnvironmentStatus step(Reward_t& reward, State_t& nextState, const Action_t& action);
+	//EnvironmentStatus step(float& reward, State_t& nextState, const Action_t& action);
 	//void close();
 };
 
@@ -52,7 +51,6 @@ public:
 	typedef typename ToNormalizedDiscrete<typename Environment_t::ActionSpace_t, DiscreteAction_t>::Normalizer_t ActionSpaceNormalizer_t;
 	typedef typename StateSpaceNormalizer_t::DstSpace_t StateSpace_t;
 	typedef typename ActionSpaceNormalizer_t::DstSpace_t ActionSpace_t;
-	typedef typename Environment_t::Reward_t Reward_t;
 	typedef typename StateSpace_t::Element_t State_t;
 	typedef typename ActionSpace_t::Element_t Action_t;
 public:
@@ -82,7 +80,7 @@ public:
 		State_t state = m_stateSpaceNormalizer.normalize(originState);
 		return state;
 	}
-	EnvironmentStatus step(Reward_t& reward, State_t& nextState, const Action_t& action)
+	EnvironmentStatus step(float& reward, State_t& nextState, const Action_t& action)
 	{
 		Environment_t::Action_t originAction = m_actionSpaceNormalizer.restore(action);
 		Environment_t::State_t originNextState;

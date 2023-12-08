@@ -3,7 +3,7 @@
 
 BEGIN_RLTL_IMPL
 
-template<typename State_t, typename Action_t, typename Reward_t, typename StateValueFunction_t, typename Policy_t>
+template<typename State_t, typename Action_t, typename StateValueFunction_t, typename Policy_t>
 class MonteCarloPrediction
 {
 public:
@@ -19,24 +19,24 @@ public:
 		Action_t action = m_policy.takeAction(firstState);
 		return action;
 	}
-	Action_t nextStep(Reward_t reward, const State_t& nextState)
+	Action_t nextStep(float reward, const State_t& nextState)
 	{
 		m_trajectory.emplace_back(m_state, reward);
 		m_state = nextState;
 		Action_t action = m_policy.takeAction(nextState);
 		return action;
 	}
-	void lastStep(Reward_t reward, const State_t& nextState, bool nonterminal)
+	void lastStep(float reward, const State_t& nextState, bool nonterminal)
 	{
 		m_trajectory.emplace_back(m_state, reward);
-		StateValueFunction_t::Value_t g = 0;
+		float g = 0;
 		size_t count = m_trajectory.size();
 		for (size_t i = 0; i < count; ++i)
 		{
 			SR& sr = m_trajectory[count - 1 - i];
 			g = g * m_discountRate + sar.reward;
-			StateValueFunction_t::Value_t value = m_valueFunction.getValue(sar.state);
-			StateValueFunction_t::Value_t newValue = value + (g - value) * m_learningRate;
+			float value = m_valueFunction.getValue(sar.state);
+			float newValue = value + (g - value) * m_learningRate;
 			m_valueFunction.setValue(sar.state, newValue);
 		}
 	}
@@ -49,9 +49,9 @@ protected:
 	struct SR
 	{
 		State_t state;
-		Reward_t reward;
+		float reward;
 		SR();
-		SR(const State_t& s, const Reward_t& r) :
+		SR(const State_t& s, const float& r) :
 			state(s), reward(r)
 		{}
 	};

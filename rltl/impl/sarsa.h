@@ -4,14 +4,12 @@
 
 BEGIN_RLTL_IMPL
 
-template<typename ActionValueFunction_t, typename Policy_t = EpsilonGreedy<ActionValueFunction_t>, typename Reward_t = float>
+template<typename ActionValueFunction_t, typename Policy_t = EpsilonGreedy<ActionValueFunction_t>>
 class Sarsa
 {
 public:
 	typedef typename ActionValueFunction_t::State_t State_t;
-	typedef typename ActionValueFunction_t::Value_t Value_t;
 	typedef typename ActionValueFunction_t::Action_t Action_t;
-	typedef typename Reward_t Reward_t;
 public:
 	Sarsa(ActionValueFunction_t& valueFunction, Policy_t& policy, float learningRate, float discountRate = 1.0f) :
 		m_valueFunction(valueFunction),
@@ -26,27 +24,27 @@ public:
 		m_action = m_policy.takeAction(firstState);
 		return m_action;
 	}
-	Action_t nextStep(Reward_t reward, const State_t& nextState)
+	Action_t nextStep(float reward, const State_t& nextState)
 	{
-		Value_t value = m_valueFunction.getValue(m_state, m_action);
+		float value = m_valueFunction.getValue(m_state, m_action);
 		Action_t nextAction = m_policy.takeAction(nextState);
-		Value_t target = reward + m_valueFunction.getValue(nextState, nextAction) * m_discountRate;
-		Value_t newValue = value + (target - value) * m_learningRate;
+		float target = reward + m_valueFunction.getValue(nextState, nextAction) * m_discountRate;
+		float newValue = value + (target - value) * m_learningRate;
 		m_valueFunction.setValue(m_state, m_action, newValue);
 		m_state = nextState;
 		m_action = nextAction;
 		return m_action;
 	}
-	void lastStep(Reward_t reward, const State_t& nextState, bool nonterminal)
+	void lastStep(float reward, const State_t& nextState, bool nonterminal)
 	{
-		Value_t value = m_valueFunction.getValue(m_state, m_action);
-		Value_t target = reward;
+		float value = m_valueFunction.getValue(m_state, m_action);
+		float target = reward;
 		if (nonterminal)
 		{
 			Action_t nextAction = m_policy.takeAction(nextState);
 			target += m_valueFunction.getValue(nextState, nextAction) * m_discountRate;
 		}
-		Value_t newValue = value + (target - value) * m_learningRate;
+		float newValue = value + (target - value) * m_learningRate;
 		m_valueFunction.setValue(m_state, m_action, newValue);
 	}
 protected:

@@ -8,37 +8,37 @@ BEGIN_RLTL_IMPL
 
 /*
 
-template<typename State_t, typename Value_t = float>
+template<typename State_t = float>
 class StateValueFunction
 {
 public:
 	typedef State_t State_t;
-	typedef Value_t Value_t;
+	
 public:
-	Value_t getValue(const State_t& state);
-	void setValue(const State_t& state, const Value_t& value);
+	float getValue(const State_t& state);
+	void setValue(const State_t& state, const float& value);
 };
 
-template<typename State_t, typename Action_t, typename Value_t = float>
+template<typename State_t, typename Action_t = float>
 class ActionValueFunction
 {
 public:
 	typedef State_t State_t;
 	typedef Action_t Action_t;
-	typedef Value_t Value_t;
+	
 public:
-	Value_t getValue(const State_t& state, const Action_t& action);
-	void setValue(const State_t& state, const Action_t& action, const Value_t& value);
+	float getValue(const State_t& state, const Action_t& action);
+	void setValue(const State_t& state, const Action_t& action, const float& value);
 };
 
 */
 
-template<typename State_t = uint32_t, typename Value_t = float>
+template<typename State_t = uint32_t = float>
 class StateValueTable
 {
 public:
 	typedef State_t State_t;
-	typedef Value_t Value_t;
+	
 public:
 	StateValueTable(uint32_t stateCount) :
 		m_values(stateCount)
@@ -49,13 +49,13 @@ public:
 		assert(state < m_values.size());
 		return m_values[state];
 	}
-	void setValue(const State_t& state, const Value_t& value)
+	void setValue(const State_t& state, const float& value)
 	{
 		assert(state < m_values.size());
 		m_values[state] = value;
 	}
 protected:
-	std::vector<Value_t> m_values;
+	std::vector<float> m_values;
 };
 
 

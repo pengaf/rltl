@@ -1,10 +1,10 @@
 #pragma once
 #include "../../rltl/impl/environment.h"
 
-class MountainCar : public rltl::impl::Environment<rltl::impl::BoxSpace<2>, rltl::impl::DiscreteSpace<>>
+class CartPole : public rltl::impl::Environment<rltl::impl::BoxSpace<4>, rltl::impl::DiscreteSpace<>>
 {
 public:
-	MountainCar(uint32_t maxStep = 500);
+	CartPole(uint32_t maxStep = 200);
 public:
 	State_t reset(int seed = 0);
 	rltl::impl::EnvironmentStatus step(float& reward, State_t& nextState, const Action_t& action);

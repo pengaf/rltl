@@ -30,14 +30,13 @@ public:
 	{
 		typedef Environment_t::State_t State_t;
 		typedef Environment_t::Action_t Action_t;
-		typedef Environment_t::Reward_t Reward_t;
 		for (int32_t episode = 0; episode < numEpisodes; ++episode)
 		{
 			State_t state = environment.reset();
 			Action_t action = algorithm.firstStep(state);
 			while (true)
 			{
-				Reward_t reward;
+				float reward;
 				State_t nextState;
 				EnvironmentStatus envStatus = environment.step(reward, nextState, action);
 				if (EnvironmentStatus::es_normal == envStatus)

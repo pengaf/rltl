@@ -3,15 +3,20 @@
 
 BEGIN_RLTL_IMPL
 
-template<typename StateValueFunction_t, typename Policy_t>
+template<typename State_t, typename Action_t>
 class TemporalDifferencePrediction
 {
 public:
-	typedef typename StateValueFunction_t::State_t State_t;
-	typedef typename Policy_t::Action_t Action_t;
+	typedef State_t State_t;
+	typedef Action_t Action_t;
+	typedef StateValueFunction<State_t> StateValueFunction_t;
+	typedef PolicyFunction<State_t, Action_t> PolicyFunction_t;
+	typedef paf::SharedPtr<StateValueFunction_t> StateValueFunctionPtr;
+	typedef paf::SharedPtr<PolicyFunction_t> PolicyFunctionPtr;
+	typedef paf::SharedPtr<TemporalDifferencePrediction> TemporalDifferencePredictionPtr;
 public:
-	TemporalDifferencePrediction(StateValueFunction_t& valueFunction, Policy_t& policy, float learningRate, float discountRate = 1.0f) :
-		m_valueFunction(valueFunction),
+	TemporalDifferencePrediction(StateValueFunctionPtr stateValueFunction, PolicyFunctionPtr policy, float learningRate, float discountRate = 1.0f) :
+		m_stateValueFunction(stateValueFunction),
 		m_policy(policy),
 		m_learningRate(learningRate),
 		m_discountRate(discountRate)
@@ -24,30 +29,35 @@ public:
 	}
 	Action_t nextStep(float reward, const State_t& nextState)
 	{
-		float value = m_valueFunction.getValue(m_state);
-		float target = reward + m_valueFunction.getValue(nextState) * m_discountRate;
+		float value = m_stateValueFunction.getValue(m_state);
+		float target = reward + m_stateValueFunction.getValue(nextState) * m_discountRate;
 		float newValue = value + (target - value) * m_learningRate;
-		m_valueFunction.setValue(m_state, newValue);
+		m_stateValueFunction.setValue(m_state, newValue);
 		m_state = nextState;
 		Action_t action = m_policy.takeAction(nextState);
 		return action;
 	}
-	void lastStep(float reward, const State_t& nextState, bool nonterminal)
+	void lastStep(float reward, const State_t& nextState, bool terminated)
 	{
-		float value = m_valueFunction.getValue(m_state);
+		float value = m_stateValueFunction.getValue(m_state);
 		float target = reward;
-		if (nonterminal)
+		if (!terminated)
 		{
-			target += m_valueFunction.getValue(nextState) * m_discountRate;
+			target += m_stateValueFunction.getValue(nextState) * m_discountRate;
 		}
 		float newValue = value + (target - value) * m_learningRate;
-		m_valueFunction.setValue(m_state, newValue);
+		m_stateValueFunction.setValue(m_state, newValue);
 	}
 protected:
-	Policy_t& m_policy;
-	ActionValueFunction_t& m_valueFunction;
+	StateValueFunctionPtr m_stateValueFunction;
+	PolicyFunctionPtr m_policy;
 	float m_learningRate;
 	float m_discountRate;
+public:
+	static TemporalDifferencePredictionPtr Make(StateValueFunctionPtr stateValueFunction, PolicyFunctionPtr policy, float learningRate, float discountRate = 1.0f)
+	{
+		return TemporalDifferencePredictionPtr::Make(stateValueFunction, policy, learningRate, discountRate);
+	}
 };
 
 END_RLTL_IMPL

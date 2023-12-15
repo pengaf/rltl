@@ -17,10 +17,12 @@ public:
 	{
 		construct(stateDim, actionDim, hiddenDims);
 	}
+	
 	MLPPolicyNetImpl(const MLPPolicyNetImpl& other)
 	{
 		construct(other.m_stateDim, other.m_actionDim, other.m_hiddenDims);
 	}
+
 	torch::Tensor forward(torch::Tensor x)
 	{
 		assert(m_linears.size() == (m_hiddenDims.size() + 1));
@@ -32,6 +34,13 @@ public:
 		torch::Tensor al = m_linears[numHiddens](x);
 		return al;
 	}
+	
+	torch::Tensor logitAction(torch::Tensor x)
+	{
+		torch::NoGradGuard nograd;
+		return forward(x);
+	}
+
 	void print()
 	{
 		for (auto& layer : m_linears)
@@ -97,6 +106,10 @@ public:
 	Action_t takeAction(const State_t& state)
 	{
 		return NN_actionBySoftmax<decltype(*this), State_t, Action_t>(*this, state);
+	}
+	uint32_t actionCount() const
+	{
+		return impl_->actionDim();
 	}
 };
 

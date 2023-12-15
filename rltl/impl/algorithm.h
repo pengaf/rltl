@@ -32,30 +32,43 @@ inline void train(Environment_t& environment, Agent_t& agent, uint32_t numEpisod
 		{
 			callback->beginEpisode(numEpisodes, episode);
 		}
+		if (callback)
+		{
+			callback->beginStep(numEpisodes, episode, 0);
+		}
 		State_t state = environment.reset();
 		Action_t action = agent.firstStep(state);
-		uint32_t totalStep = 0;
+		uint32_t numSteps = 0;
 		float totalReward = 0;
 		while (true)
 		{
 			float reward;
 			State_t nextState;
 			EnvironmentStatus envStatus = environment.step(reward, nextState, action);
-			++totalStep;
+			++numSteps;
 			totalReward += reward;
 			if (EnvironmentStatus::es_normal == envStatus)
 			{
 				action = agent.nextStep(reward, nextState);
+				if (callback)
+				{
+					callback->endStep(numEpisodes, episode, numSteps, reward);
+					callback->beginStep(numEpisodes, episode, numSteps + 1);
+				}
 			}
 			else
 			{
-				agent.lastStep(reward, nextState, envStatus != EnvironmentStatus::es_terminated);
+				agent.lastStep(reward, nextState, envStatus == EnvironmentStatus::es_terminated);
 				if (callback)
 				{
-					callback->endEpisode(numEpisodes, episode, totalStep, totalReward);
+					callback->endStep(numEpisodes, episode, numSteps, reward);
 				}
 				break;
 			}
+		}
+		if (callback)
+		{
+			callback->endEpisode(numEpisodes, episode, numSteps, totalReward);
 		}
 	}
 	if (callback)
@@ -77,7 +90,7 @@ inline void train(Environment_t& environment, Agent_t& agent, uint32_t numEpisod
 //		m_state = state;
 //		return m_agent.takeAction(state);
 //	}
-//	Action_t nextStep(float reward, const State_t& nextState, bool nonterminal)
+//	Action_t nextStep(float reward, const State_t& nextState, bool terminated)
 //	{
 //		SR sr;
 //		sr.state = m_state;
@@ -122,7 +135,7 @@ inline void train(Environment_t& environment, Agent_t& agent, uint32_t numEpisod
 //		m_state = state;
 //		return m_valueFunction.takeAction(state);
 //	}
-//	Action_t step(float reward, const State_t& nextState, bool nonterminal)
+//	Action_t step(float reward, const State_t& nextState, bool terminated)
 //	{
 //		SR sr;
 //		sr.state = m_state;

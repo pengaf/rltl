@@ -16,7 +16,7 @@ public:
 	{}
 };
 
-class Callback
+class Callback : public paf::Introspectable
 {
 public:
 	virtual void beginTrain(uint32_t numEpisodes)
@@ -49,6 +49,14 @@ public:
 	{
 		m_callback.beginEpisode(numEpisodes, episode);
 	}
+	void beginStep(uint32_t numEpisodes, uint32_t episode, uint32_t step)
+	{
+		m_callback.beginStep(numEpisodes, episode, step);
+	}
+	void endStep(uint32_t numEpisodes, uint32_t episode, uint32_t step, float reward)
+	{
+		m_callback.endStep(numEpisodes, episode, step, reward);
+	}
 	void endEpisode(uint32_t numEpisodes, uint32_t episode, uint32_t totalStep, float totalReward)
 	{
 		m_callback.endEpisode(numEpisodes, episode, totalStep, totalReward);
@@ -79,6 +87,16 @@ public:
 	{
 		m_callback.beginEpisode(numEpisodes, episode);
 		m_otherCallBacks.beginEpisode(numEpisodes, episode);
+	}
+	void beginStep(uint32_t numEpisodes, uint32_t episode, uint32_t step)
+	{
+		m_callback.beginStep(numEpisodes, episode, step);
+		m_otherCallBacks.beginStep(numEpisodes, episode, step);
+	}
+	void endStep(uint32_t numEpisodes, uint32_t episode, uint32_t step, float reward)
+	{
+		m_callback.endStep(numEpisodes, episode, step, reward);
+		m_otherCallBacks.endStep(numEpisodes, episode, step, reward);
 	}
 	void endEpisode(uint32_t numEpisodes, uint32_t episode, uint32_t totalStep, float totalReward)
 	{

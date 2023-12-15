@@ -4,13 +4,12 @@
 
 BEGIN_RLTL_IMPL
 
-template<typename State_t = uint32_t, typename Action_t = uint32_t>
-class ActionValueTable
+template<typename State_t, typename Action_t>
+class ActionValueTable : public ActionValueFunction<State_t, Action_t>
 {
 public:
 	typedef State_t State_t;
-	typedef Action_t Action_t;
-	
+	typedef Action_t Action_t;	
 public:
 	ActionValueTable(uint32_t stateCount, uint32_t actionCount) :
 		m_stateCount(stateCount),
@@ -77,17 +76,6 @@ public:
 		}
 		return maxValue;
 	}
-	//float meanValue(const State_t& state) const
-	//{
-	//	uint32_t index = state * m_actionCount;
-	//	float valueSum = m_values[index];
-	//	for (uint32_t i = 1; i < m_actionCount; ++i)
-	//	{
-	//		float value = m_values[index + i];
-	//		valueSum += value;
-	//	}
-	//	return valueSum / float(m_actionCount);
-	//}
 	uint32_t stateCount() const
 	{
 		return m_stateCount;

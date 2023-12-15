@@ -14,14 +14,20 @@ struct ReinforceOptions
 	RLTL_ARG(float, discountRate);
 };
 
-template<typename PolicyNet_t, typename Policy_t = PolicyNet_t>
+template<typename State_t, typename Action_t>
 class DeepReinforce
 {
 public:
-	typedef typename PolicyNet_t::State_t State_t;
-	typedef typename PolicyNet_t::Action_t Action_t;
+	typedef State_t State_t;
+	typedef Action_t Action_t;
+	typedef PolicyNet<State_t, Action_t> PolicyNet_t;
+	typedef PolicyFunction<State_t, Action_t> PolicyFunction_t;
+	typedef paf::SharedPtr<PolicyNet_t> PolicyNetPtr;
+	typedef std::shared_ptr<Optimizer> OptimizerPtr;
+	typedef paf::SharedPtr<PolicyFunction_t> PolicyFunctionPtr;
+	typedef paf::SharedPtr<DeepReinforce> DeepReinforcePtr;
 public:
-	DeepReinforce(PolicyNet_t& policyNet, Optimizer& optimizer, Policy_t& policy, const ReinforceOptions& options) :
+	DeepReinforce(PolicyNetPtr policyNet, OptimizerPtr optimizer, PolicyFunctionPtr policy, const ReinforceOptions& options) :
 		m_policyNet(policyNet),
 		m_optimizer(optimizer),
 		m_policy(policy),
@@ -45,7 +51,7 @@ public:
 		return m_action;
 	}
 	
-	void lastStep(float reward, const State_t& nextState, bool nonterminal)
+	void lastStep(float reward, const State_t& nextState, bool terminated)
 	{
 		m_states.emplace_back(m_state);
 		m_actions.emplace_back(m_action);
@@ -122,9 +128,9 @@ protected:
 		return tensor;
 	}
 protected:
-	PolicyNet_t& m_policyNet;
-	Optimizer& m_optimizer;
-	Policy_t& m_policy;
+	PolicyNetPtr m_policyNet;
+	OptimizerPtr m_optimizer;
+	PolicyFunctionPtr m_policy;
 	float m_discountRate;
 	std::vector<State_t> m_states;
 	std::vector<Action_t> m_actions;
@@ -132,12 +138,17 @@ protected:
 protected:
 	State_t m_state;
 	Action_t m_action;
+public:
+	static DeepReinforcePtr Make(PolicyNetPtr policyNet, OptimizerPtr optimizer, PolicyFunctionPtr policy, const ReinforceOptions& options)
+	{
+		return DeepReinforcePtr::Make(policyNet, optimizer, policy, options);
+	}
 };
 
-template<typename PolicyNet_t, typename Policy_t = PolicyNet_t>
-inline static DeepReinforce<PolicyNet_t, Policy_t> MakeReinforce(PolicyNet_t& policyNet, Optimizer& optimizer, Policy_t& policy, const ReinforceOptions& options)
-{
-	return DeepReinforce(policyNet, optimizer, policy, options);
-}
+//template<typename PolicyNet_t, typename Policy_t = PolicyNet_t>
+//inline static DeepReinforce<PolicyNet_t, Policy_t> MakeReinforce(PolicyNet_t& policyNet, Optimizer& optimizer, Policy_t& policy, const ReinforceOptions& options)
+//{
+//	return DeepReinforce(policyNet, optimizer, policy, options);
+//}
 
 END_RLTL_IMPL

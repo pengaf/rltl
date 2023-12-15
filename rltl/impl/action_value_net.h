@@ -13,14 +13,17 @@ public:
 		hiddenDims.resize(numHiddens, hiddenDim);
 		construct(stateDim, actionDim, hiddenDims, dueling);
 	}
+
 	MLPActionValueNetImpl(uint32_t stateDim, uint32_t actionDim, const std::vector<uint32_t>& hiddenDims, bool dueling = true)
 	{
 		construct(stateDim, actionDim, hiddenDims, dueling);
 	}
+	
 	MLPActionValueNetImpl(const MLPActionValueNetImpl& other)
 	{
 		construct(other.m_stateDim, other.m_actionDim, other.m_hiddenDims, other.m_dueling);
 	}
+
 	torch::Tensor forward(torch::Tensor x)
 	{
 		assert(m_linears.size() == (m_hiddenDims.size() + 1 + (m_dueling ? 1 : 0)));
@@ -42,6 +45,13 @@ public:
 			return q;
 		}
 	}
+
+	torch::Tensor actionValue(torch::Tensor x)
+	{
+		torch::NoGradGuard nograd;
+		return forward(x);
+	}
+
 	void print()
 	{
 		for (auto& l : m_linears)
@@ -110,30 +120,42 @@ protected:
 //TORCH_MODULE(MLPQNet);
 
 template<typename State_t, typename Action_t>
-class MLPActionValueNet : public torch::nn::ModuleHolder<MLPActionValueNetImpl>
+class MLPActionValueNet : public ActionValueNet<State_t, Action_t>, public torch::nn::ModuleHolder<MLPActionValueNetImpl>
 {
 public:
 	typedef State_t State_t;
-	typedef Action_t Action_t;	
+	typedef Action_t Action_t;
+	typedef paf::SharedPtr<MLPActionValueNet> MLPActionValueNetPtr;
 public:
 	using torch::nn::ModuleHolder<MLPActionValueNetImpl>::ModuleHolder;
 public:
-	uint32_t actionCount() const
+	virtual Action_t maxAction(const State_t& state, bool firstMax = true) const override
+	{
+		return NN_actionByArgmax<decltype(*this), State_t, Action_t>(*this, state);
+	}	
+	
+	virtual void getValues(std::vector<float>& values, const State_t& state) const override
+	{
+		NN_getStateValues<decltype(*this), State_t>(values, *this, state);
+	}
+
+	virtual uint32_t actionCount() const override
 	{
 		return impl_->actionDim();
 	}
-	Action_t firstMaxAction(const State_t& state)
+
+	virtual Tensor forward(const Tensor& stateTensor) override
 	{
-		return NN_actionByArgmax<decltype(*this), State_t, Action_t>(*this, state);
+		return impl_->forward(stateTensor);
 	}
-	Action_t randomMaxAction(const State_t& state)
+public:
+	MLPActionValueNetPtr Make(uint32_t stateDim, uint32_t actionDim, uint32_t hiddenDim, size_t numHiddens = 1, bool dueling = true)
 	{
-		assert(state < m_stateCount);
-		return firstMaxAction(state);
+		return MLPActionValueNetPtr::Make(stateDim, actionDim, hiddenDim, numHiddens, dueling);
 	}
-	void getValues(std::vector<float>& values, const State_t& state) const
+	MLPActionValueNetPtr Make(uint32_t stateDim, uint32_t actionDim, const std::vector<uint32_t>& hiddenDims, bool dueling = true)
 	{
-		NN_getStateValues<decltype(*this), State_t>(values, *this, state);
+		return MLPActionValueNetPtr::Make(stateDim, actionDim, hiddenDims, dueling);
 	}
 };
 

@@ -84,7 +84,7 @@ public:
 		m_actions = new Action_t[capacity];
 		m_rewards = new float[capacity];
 		m_nextStates = new State_t[capacity];
-		m_nonterminals = new bool[capacity];
+		m_nextDiscounts = new float[capacity];
 		if (options.prioritized())
 		{
 			m_priorities = new Priority_t[capacity];
@@ -96,12 +96,12 @@ public:
 
 	~ReplayMemory()
 	{
-		delete[]m_nonterminals;
+		delete[]m_nextActions;
+		delete[]m_nextDiscounts;
 		delete[]m_nextStates;
 		delete[]m_rewards;
 		delete[]m_actions;
 		delete[]m_states;
-		delete[]m_nextActions;
 		delete[]m_priorities;
 		delete[]m_prioritySums;
 	}
@@ -135,14 +135,14 @@ public:
 		}
 	}
 
-	void store(const State_t& state, const Action_t& action, float reward, const State_t& nextState, bool nonterminal)
+	void append(const State_t& state, const Action_t& action, float reward, const State_t& nextState, float nextDiscount)
 	{
 		size_t index = m_index;
 		m_states[index] = state;
 		m_actions[index] = action;
 		m_rewards[index] = reward;
 		m_nextStates[index] = nextState;
-		m_nonterminals[index] = nonterminal;
+		m_nextDiscounts[index] = nextDiscount;
 		if (m_priorities)
 		{
 			updatePriority(index, m_maxPriority);
@@ -154,15 +154,15 @@ public:
 		}
 	}
 
-	void store(const State_t& state, const Action_t& action, float reward, const State_t& nextState, const Action_t& nextAction, bool nonterminal)
+	void append(const State_t& state, const Action_t& action, float reward, const State_t& nextState, float nextDiscount, const Action_t& nextAction)
 	{
 		size_t index = m_index;
 		m_states[index] = state;
 		m_actions[index] = action;
 		m_rewards[index] = reward;
 		m_nextStates[index] = nextState;
+		m_nextDiscounts[index] = nextDiscount;
 		m_nextActions[index] = nextAction;
-		m_nonterminals[index] = nonterminal;
 		if (m_priorities)
 		{
 			updatePriority(index, m_maxPriority);
@@ -175,14 +175,14 @@ public:
 	}
 
 	////sequential sample and erase 
-	//bool popup(Tensor& stateTensor, Tensor& actionTensor, Tensor& rewardTensor, Tensor& nextStateTensor, Tensor& nonterminalTensor, uint32_t batchSize)
+	//bool popup(Tensor& stateTensor, Tensor& actionTensor, Tensor& rewardTensor, Tensor& nextStateTensor, Tensor& nextDiscountTensor, uint32_t batchSize)
 	//{
 	//	assert(0 < batchSize && batchSize <= m_size);
 	//	auto states = stateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
 	//	auto actions = actionTensor.accessor<int64_t, GetDimension<Action_t>::dim() + 1>();
 	//	auto rewards = rewardTensor.accessor<float, 2>();
 	//	auto nextStates = nextStateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
-	//	auto nonterminals = nonterminalTensor.accessor<float, 2>();
+	//	auto nextDiscounts = nextDiscountTensor.accessor<float, 2>();
 	//	for (uint32_t i = 0; i < batchSize; ++i)
 	//	{
 	//		size_t index = (size_t)Random::randint(m_size);
@@ -191,19 +191,19 @@ public:
 	//		assign(actions[i], m_actions[index]);
 	//		assign(rewards[i], m_rewards[index]);
 	//		assign(nextStates[i], m_nextStates[index]);
-	//		assign(nonterminals[i], m_nonterminals[index]);
+	//		assign(nextDiscounts[i], m_nextDiscounts[index]);
 	//	}
 	//}
 
 	//random sample
-	void sample(Tensor& stateTensor, Tensor& actionTensor, Tensor& rewardTensor, Tensor& nextStateTensor, Tensor& nonterminalTensor, uint32_t batchSize) const
+	void sample(Tensor& stateTensor, Tensor& actionTensor, Tensor& rewardTensor, Tensor& nextStateTensor, Tensor& nextDiscountTensor, uint32_t batchSize) const
 	{
 		assert(0 < batchSize && 0 < m_size);
 		auto states = stateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
 		auto actions = actionTensor.accessor<int64_t, GetDimension<Action_t>::dim() + 1>();
 		auto rewards = rewardTensor.accessor<float, 2>();
 		auto nextStates = nextStateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
-		auto nonterminals = nonterminalTensor.accessor<float, 2>();
+		auto nextDiscounts = nextDiscountTensor.accessor<float, 2>();
 		for (uint32_t i = 0; i < batchSize; ++i)
 		{
 			size_t index = (size_t)Random::randint(m_size);
@@ -212,19 +212,20 @@ public:
 			assign(actions[i], m_actions[index]);
 			assign(rewards[i], m_rewards[index]);
 			assign(nextStates[i], m_nextStates[index]);
-			assign(nonterminals[i], m_nonterminals[index]);
+			assign(nextDiscounts[i], m_nextDiscounts[index]);
 		}
 	}
 
-	void sample(Tensor& stateTensor, Tensor& actionTensor, Tensor& rewardTensor, Tensor& nextStateTensor, Tensor& nextActionTensor, Tensor& nonterminalTensor, uint32_t batchSize) const
+
+	void sample(Tensor& stateTensor, Tensor& actionTensor, Tensor& rewardTensor, Tensor& nextStateTensor, Tensor& nextDiscountTensor, Tensor& nextActionTensor, uint32_t batchSize) const
 	{
 		assert(0 < batchSize && 0 < m_size);
 		auto states = stateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
 		auto actions = actionTensor.accessor<int64_t, GetDimension<Action_t>::dim() + 1>();
 		auto rewards = rewardTensor.accessor<float, 2>();
 		auto nextStates = nextStateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
+		auto nextDiscounts = nextDiscountTensor.accessor<float, 2>();
 		auto nextActions = nextActionTensor.accessor<int64_t, GetDimension<Action_t>::dim() + 1>();
-		auto nonterminals = nonterminalTensor.accessor<float, 2>();
 		for (uint32_t i = 0; i < batchSize; ++i)
 		{
 			size_t index = (size_t)Random::randint(m_size);
@@ -233,20 +234,20 @@ public:
 			assign(actions[i], m_actions[index]);
 			assign(rewards[i], m_rewards[index]);
 			assign(nextStates[i], m_nextStates[index]);
+			assign(nextDiscounts[i], m_nextDiscounts[index]);
 			assign(nextActions[i], m_nextActions[index]);
-			assign(nonterminals[i], m_nonterminals[index]);
 		}
 	}
 
 	//random sample with priority
-	void sample(std::vector<uint32_t>& indices, Tensor& stateTensor, Tensor& actionTensor, Tensor& rewardTensor, Tensor& nextStateTensor, Tensor& nonterminalTensor, Tensor& weightTensor, uint32_t batchSize) const
+	void sample(std::vector<uint32_t>& indices, Tensor& stateTensor, Tensor& actionTensor, Tensor& rewardTensor, Tensor& nextStateTensor, Tensor& nextDiscountTensor, Tensor& weightTensor, uint32_t batchSize) const
 	{
 		assert(0 < batchSize && 0 < m_size);
 		auto states = stateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
 		auto actions = actionTensor.accessor<int64_t, GetDimension<Action_t>::dim() + 1>();
 		auto rewards = rewardTensor.accessor<float, 2>();
 		auto nextStates = nextStateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
-		auto nonterminals = nonterminalTensor.accessor<float, 2>();
+		auto nextDiscounts = nextDiscountTensor.accessor<float, 2>();
 		auto weights = weightTensor.accessor<float, 2>();
 		for (uint32_t i = 0; i < batchSize; ++i)
 		{
@@ -257,20 +258,20 @@ public:
 			assign(actions[i], m_actions[index]);
 			assign(rewards[i], m_rewards[index]);
 			assign(nextStates[i], m_nextStates[index]);
-			assign(nonterminals[i], m_nonterminals[index]);
+			assign(nextDiscounts[i], m_nextDiscounts[index]);
 			weights[i][0] = std::pow(m_minPriority / m_priorities[index], m_prioritizedBeta);
 		}
 	}
 
-	void sample(std::vector<uint32_t>& indices, Tensor& stateTensor, Tensor& actionTensor, Tensor& rewardTensor, Tensor& nextStateTensor, Tensor& nextActionTensor, Tensor& nonterminalTensor, Tensor& weightTensor, uint32_t batchSize) const
+	void sample(std::vector<uint32_t>& indices, Tensor& stateTensor, Tensor& actionTensor, Tensor& rewardTensor, Tensor& nextStateTensor, Tensor& nextDiscountTensor, Tensor& nextActionTensor, Tensor& weightTensor, uint32_t batchSize) const
 	{
 		assert(0 < batchSize && 0 < m_size);
 		auto states = stateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
 		auto actions = actionTensor.accessor<int64_t, GetDimension<Action_t>::dim() + 1>();
 		auto rewards = rewardTensor.accessor<float, 2>();
 		auto nextStates = nextStateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
+		auto nextDiscounts = nextDiscountTensor.accessor<float, 2>();
 		auto nextActions = nextActionTensor.accessor<int64_t, GetDimension<Action_t>::dim() + 1>();
-		auto nonterminals = nonterminalTensor.accessor<float, 2>();
 		auto weights = weightTensor.accessor<float, 2>();
 		for (uint32_t i = 0; i < batchSize; ++i)
 		{
@@ -281,8 +282,8 @@ public:
 			assign(actions[i], m_actions[index]);
 			assign(rewards[i], m_rewards[index]);
 			assign(nextStates[i], m_nextStates[index]);
+			assign(nextDiscounts[i], m_nextDiscounts[index]);
 			assign(nextActions[i], m_nextActions[index]);
-			assign(nonterminals[i], m_nonterminals[index]);
 			weights[i][0] = std::pow(m_minPriority / m_priorities[index], m_prioritizedBeta);
 		}
 	}
@@ -357,8 +358,8 @@ protected:
 	Action_t* m_actions{};
 	float* m_rewards{};
 	State_t* m_nextStates{};
+	float* m_nextDiscounts{};
 	Action_t* m_nextActions{};
-	bool* m_nonterminals{};
 	Priority_t* m_priorities{};
 	PrioritySum_t* m_prioritySums{};
 	Priority_t m_minPriority{ FLT_MAX };

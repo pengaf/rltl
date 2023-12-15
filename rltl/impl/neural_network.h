@@ -2,12 +2,9 @@
 #include "utility.h"
 #include "array.h"
 #include "random.h"
-#include <torch/torch.h>
 
 BEGIN_RLTL_IMPL
 
-typedef torch::Tensor Tensor;
-typedef torch::optim::Optimizer Optimizer;
 
 template<typename T, size_t N, typename Element_t, size_t t_size_0, size_t... t_sizes>
 struct ArrayConstViewToTensorAccessor
@@ -206,6 +203,20 @@ inline void assign(Element_t& value, const torch::TensorAccessor<T, 1>& tensorAc
 	value = tensorAccessor[0];
 }
 
+template<typename Element_t, typename TensorScalar_t>
+Tensor NN_makeTensor(TensorScalar_t dtype, uint32_t batchSize)
+{
+	auto shape = GetShape<Element_t>::shape();
+	std::array<int64_t, GetDimension<Element_t>::dim() + 1> tensorShape;
+	tensorShape[0] = batchSize;
+	for (size_t i = 0; i < GetDimension<Element_t>::dim(); ++i)
+	{
+		tensorShape[i + 1] = shape[i];
+	}
+	Tensor tensor = torch::empty(tensorShape, torch::TensorOptions().dtype(dtype));
+	return tensor;
+}
+
 template<typename Network_t, typename State_t>
 inline float NN_getStateValue(Network_t& network, const State_t& state)
 {
@@ -263,8 +274,7 @@ inline Action_t NN_actionByArgmax(Network_t& network, const State_t& state)
 	torch::Tensor stateTensor = torch::empty(tensorShape, torch::TensorOptions().dtype(torch::kFloat32));
 	auto stateAccessor = stateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
 	assign(stateAccessor[0], state);
-	//torch::Tensor actionValueTensor = network->forward(stateTensor);
-	torch::Tensor actionTensor = network->forward(stateTensor).argmax(1);
+	torch::Tensor actionTensor = network->actionValue(stateTensor).argmax(1);
 	auto actionAccessor = actionTensor.accessor<int64_t, GetDimension<Action_t>::dim()>();
 	Action_t action;
 	assign(action, actionAccessor);
@@ -285,7 +295,7 @@ inline Action_t NN_actionBySoftmax(Network_t& network, const State_t& state)
 	torch::Tensor stateTensor = torch::empty(tensorShape, torch::TensorOptions().dtype(torch::kFloat32));
 	auto stateAccessor = stateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
 	assign(stateAccessor[0], state);
-	torch::Tensor probTensor = torch::nn::functional::softmax(network->forward(stateTensor), 1);
+	torch::Tensor probTensor = torch::nn::functional::softmax(network->logitAction(stateTensor), 1);
 	size_t probSize = probTensor.size(1);
 
 	Action_t action = probSize - 1;

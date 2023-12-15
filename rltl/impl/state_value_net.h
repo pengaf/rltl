@@ -30,7 +30,7 @@ public:
 	}
 	torch::Tensor forward(torch::Tensor x)
 	{
-		assert(m_linears.size() == (m_hiddenDims.size() + 1 + (m_dueling ? 1 : 0)));
+		assert(m_linears.size() == (m_hiddenDims.size() + 1));
 		size_t numHiddens = m_hiddenDims.size();
 		for (size_t i = 0; i < numHiddens; ++i)
 		{

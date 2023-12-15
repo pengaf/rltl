@@ -1,6 +1,5 @@
 #pragma once
 #include "agent.h"
-#include "epsilon_greedy.h"
 #include "replay_memory.h"
 #include "array.h"
 #include "neural_network.h"
@@ -17,13 +16,15 @@ struct DeepActionValueAgentOptions
 		m_targetUpdateFreq(targetUpdateFreq)
 	{
 		m_multiStep = 0;
+		m_multiStepCompound = false;
 	}
 	RLTL_ARG(float, discountRate);
-	RLTL_ARG(uint32_t, multiStep);
 	RLTL_ARG(uint32_t, minReplaySize);
 	RLTL_ARG(uint32_t, batchSize);
 	RLTL_ARG(uint32_t, learnFreq);
 	RLTL_ARG(uint32_t, targetUpdateFreq);
+	RLTL_ARG(uint32_t, multiStep);
+	RLTL_ARG(bool, multiStepCompound);
 };
 
 struct DeepQLearningOptions : DeepActionValueAgentOptions
@@ -115,85 +116,70 @@ public:
 		m_targetNet(*valueNet.get()),
 		m_replayMemory(replayMemory),
 		m_discountRate(options.discountRate()),
-		m_multiStep(options.multiStep()),
 		m_minReplaySize(options.minReplaySize()),
 		m_batchSize(options.batchSize()),
 		m_learnFreq(options.learnFreq()),
-		m_targetUpdateFreq(options.targetUpdateFreq())
+		m_targetUpdateFreq(options.targetUpdateFreq()),
+		m_multiStepCompound(options.multiStepCompound())
 	{
 		m_stateTensor = MakeTensor<State_t>(torch::kFloat32);
 		m_actionTensor = MakeTensor<Action_t>(torch::kInt64);
 		m_rewardTensor = MakeTensor<float>(torch::kFloat32);
 		m_nextStateTensor = MakeTensor<State_t>(torch::kFloat32);
+		m_nextDiscountTensor = MakeTensor<float>(torch::kFloat32);
 		if constexpr (TargetEvaluationMethod::sarsa == t_evaluationMethod)
 		{
 			replayMemory.prepareNextActions();
 			m_nextActionTensor = MakeTensor<Action_t>(torch::kInt64);
 		}
-		m_nonterminalTensor = MakeTensor<bool>(torch::kFloat32);
 		if (m_replayMemory.isPrioritized())
 		{
 			m_weightTensor = MakeTensor<float>(torch::kFloat32);
 			m_sampleIndices.resize(m_batchSize);
 		}
-		if (m_multiStep > 1)
+		uint32_t multiStep = options.multiStep();
+		if (multiStep > 1)
 		{
-			m_multiStepStates = new State_t[m_multiStep];
-			m_multiStepActions = new Action_t[m_multiStep];
-			m_multiStepRewards = new float[m_multiStep];
-			m_multiStepDiscountRate = std::pow(m_discountRate, m_multiStep);
+			m_multiStepBuffer.initialize(multiStep);
 		}
-		else
-		{
-			m_multiStepDiscountRate = m_discountRate;
-		}
-	}
-	~DeepQNetwork()
-	{
-		delete[] m_multiStepStates;
-		delete[] m_multiStepActions;
-		delete[] m_multiStepRewards;
 	}
 public:
 	Action_t firstStep(const State_t& firstState)
 	{
 		m_state = firstState;
 		m_action = m_policy.takeAction(firstState);
-		m_currentStep = 0;//multistep
+		m_multiStepBuffer.reset();
 		return m_action;
 	}
 	Action_t nextStep(float reward, const State_t& nextState)	
 	{
-		float accReward = 0;
-		if (m_multiStep > 1)
-		{
-			uint32_t index = m_currentStep % m_multiStep;
-			m_multiStepStates[index] = m_state;
-			m_multiStepActions[index] = m_action;
-			m_multiStepRewards[index] = reward;
-			if (m_currentStep + 1 >= m_multiStep)
-			{
-				accReward = reward;
-				for (uint32_t i = 1; i < m_multiStep; ++i)
-				{
-					accReward = accReward * m_discountRate + m_multiStepRewards[(m_currentStep - i) % m_multiStep];
-				}
-			}
-		}
 		if constexpr (TargetEvaluationMethod::sarsa == t_evaluationMethod)
 		{
 			Action_t nextAction = m_policy.takeAction(nextState);
-			if (m_multiStep > 1)
+			if (m_multiStepBuffer)
 			{
-				if (m_currentStep + 1 >= m_multiStep)
+				m_multiStepBuffer.append(m_state, m_action, reward, m_discountRate);
+				if (m_multiStepCompound)
 				{
-					uint32_t index = (m_currentStep + 1) % m_multiStep;
-					m_replayMemory.store(m_multiStepStates[index], m_multiStepActions[index], accReward, nextState, nextAction, true);
+					uint32_t count = std::min(m_multiStepBuffer.stepCount(), m_multiStepBuffer.multiStep());
+					for (size_t i = 0; i < count; ++i)
+					{
+						auto sar = m_multiStepBuffer.get(m_multiStepBuffer.stepCount() - count + i);
+						m_replayMemory.append(sar->state, sar->action, sar->accReward, nextState, sar->accDiscountRate, nextAction);
+					}
+				}
+				else
+				{
+					if (m_multiStepBuffer.stepCount() >= m_multiStepBuffer.multiStep())
+					{
+						auto sar = m_multiStepBuffer.getHead();
+						m_replayMemory.append(sar->state, sar->action, sar->accReward, nextState, sar->accDiscountRate, nextAction);
+					}
 				}
 			}
 			else
 			{
-				m_replayMemory.store(m_state, m_action, reward, nextState, nextAction, true);
+				m_replayMemory.append(m_state, m_action, reward, nextState, m_discountRate, nextAction);
 			}
 			learn();
 			m_state = nextState;
@@ -201,72 +187,72 @@ public:
 		}
 		else
 		{
-			if (m_multiStep > 1)
+			if (m_multiStepBuffer)
 			{
-				if (m_currentStep + 1 >= m_multiStep)
+				m_multiStepBuffer.append(m_state, m_action, reward, m_discountRate);
+				if (m_multiStepCompound)
 				{
-					uint32_t index = (m_currentStep + 1) % m_multiStep;
-					m_replayMemory.store(m_multiStepStates[index], m_multiStepActions[index], accReward, nextState, true);
+					uint32_t count = std::min(m_multiStepBuffer.stepCount(), m_multiStepBuffer.multiStep());
+					for (size_t i = 0; i < count; ++i)
+					{
+						auto sar = m_multiStepBuffer.get(m_multiStepBuffer.stepCount() - count + i);
+						m_replayMemory.append(sar->state, sar->action, sar->accReward, nextState, sar->accDiscountRate);
+					}
+				}
+				else
+				{
+					if (m_multiStepBuffer.stepCount() >= m_multiStepBuffer.multiStep())
+					{
+						auto sar = m_multiStepBuffer.getHead();
+						m_replayMemory.append(sar->state, sar->action, sar->accReward, nextState, sar->accDiscountRate);
+					}
 				}
 			}
 			else
 			{
-				m_replayMemory.store(m_state, m_action, reward, nextState, true);
+				m_replayMemory.append(m_state, m_action, reward, nextState, m_discountRate);
 			}
 			learn();
 			m_state = nextState;
 			m_action = m_policy.takeAction(nextState);
 		}
-		++m_currentStep;
 		return m_action;
 	}
-	void lastStep(float reward, const State_t& nextState, bool nonterminal)
+	void lastStep(float reward, const State_t& nextState, bool terminated)
 	{
-		if (m_multiStep > 1)
+		if constexpr (TargetEvaluationMethod::sarsa == t_evaluationMethod)
 		{
-			uint32_t index = m_currentStep % m_multiStep;
-			m_multiStepStates[index] = m_state;
-			m_multiStepActions[index] = m_action;
-			m_multiStepRewards[index] = reward;
-			size_t count = m_currentStep < m_multiStep ? m_currentStep : m_multiStep;
-			if constexpr (TargetEvaluationMethod::sarsa == t_evaluationMethod)
+			Action_t nextAction = m_policy.takeAction(nextState);
+			if (m_multiStepBuffer)
 			{
-				Action_t nextAction = m_policy.takeAction(nextState);
-				float accReward = 0;
+				m_multiStepBuffer.append(m_state, m_action, reward, m_discountRate);
+				uint32_t count = std::min(m_multiStepBuffer.stepCount(), m_multiStepBuffer.multiStep());
 				for (size_t i = 0; i < count; ++i)
 				{
-					uint32_t index = (m_currentStep - i) % m_multiStep;
-					accReward = accReward * m_discountRate + m_multiStepRewards[index];
-					//if (!nonterminal || i + 1 == m_multiStep)
-					{
-						m_replayMemory.store(m_multiStepStates[index], m_multiStepActions[index], accReward, nextState, nextAction, nonterminal);
-					}
+					auto sar = m_multiStepBuffer.get(m_multiStepBuffer.stepCount() - count + i);
+					m_replayMemory.append(sar->state, sar->action, sar->accReward, nextState, terminated ? 0 : sar->accDiscountRate, nextAction);
 				}
 			}
 			else
-			{
-				float accReward = 0;
-				for (size_t i = 0; i < count; ++i)
-				{
-					uint32_t index = (m_currentStep - i) % m_multiStep;
-					accReward = accReward * m_discountRate + m_multiStepRewards[index];
-					//if (!nonterminal || i + 1 == m_multiStep)
-					{
-						m_replayMemory.store(m_multiStepStates[index], m_multiStepActions[index], accReward, nextState, nonterminal);
-					}
-				}
+			{ 
+				m_replayMemory.append(m_state, m_action, reward, nextState, terminated ? 0 : m_discountRate, nextAction);
 			}
 		}
 		else
 		{
-			if constexpr (TargetEvaluationMethod::sarsa == t_evaluationMethod)
+			if (m_multiStepBuffer)
 			{
-				Action_t nextAction = m_policy.takeAction(nextState);
-				m_replayMemory.store(m_state, m_action, reward, nextState, nextAction, nonterminal);
+				m_multiStepBuffer.append(m_state, m_action, reward, m_discountRate);
+				uint32_t count = std::min(m_multiStepBuffer.stepCount(), m_multiStepBuffer.multiStep());
+				for (size_t i = 0; i < count; ++i)
+				{
+					auto sar = m_multiStepBuffer.get(m_multiStepBuffer.stepCount() - count + i);
+					m_replayMemory.append(sar->state, sar->action, sar->accReward, nextState, terminated ? 0 : sar->accDiscountRate);
+				}
 			}
 			else
 			{
-				m_replayMemory.store(m_state, m_action, reward, nextState, nonterminal);
+				m_replayMemory.append(m_state, m_action, reward, nextState, terminated ? 0 : m_discountRate);
 			}
 		}
 		learn();
@@ -278,29 +264,28 @@ protected:
 		{
 			return;
 		}
-		++m_stepCount;// = (m_stepCount + 1) % m_learnFreq;
-		if (m_stepCount % m_learnFreq == 0)
+		if (m_learnCount % m_learnFreq == 0)
 		{
 			if constexpr (TargetEvaluationMethod::sarsa == t_evaluationMethod)
 			{
 				if (m_replayMemory.isPrioritized())
 				{
-					m_replayMemory.sample(m_sampleIndices, m_stateTensor, m_actionTensor, m_rewardTensor, m_nextStateTensor, m_nextActionTensor, m_nonterminalTensor, m_weightTensor, m_batchSize);
+					m_replayMemory.sample(m_sampleIndices, m_stateTensor, m_actionTensor, m_rewardTensor, m_nextStateTensor, m_nextDiscountTensor, m_nextActionTensor, m_weightTensor, m_batchSize);
 				}
 				else
 				{
-					m_replayMemory.sample(m_stateTensor, m_actionTensor, m_rewardTensor, m_nextStateTensor, m_nextActionTensor, m_nonterminalTensor, m_batchSize);
+					m_replayMemory.sample(m_stateTensor, m_actionTensor, m_rewardTensor, m_nextStateTensor, m_nextDiscountTensor, m_nextActionTensor, m_batchSize);
 				}
 			}
 			else
 			{
 				if (m_replayMemory.isPrioritized())
 				{
-					m_replayMemory.sample(m_sampleIndices, m_stateTensor, m_actionTensor, m_rewardTensor, m_nextStateTensor, m_nonterminalTensor, m_weightTensor, m_batchSize);
+					m_replayMemory.sample(m_sampleIndices, m_stateTensor, m_actionTensor, m_rewardTensor, m_nextStateTensor, m_nextDiscountTensor, m_weightTensor, m_batchSize);
 				}
 				else
 				{
-					m_replayMemory.sample(m_stateTensor, m_actionTensor, m_rewardTensor, m_nextStateTensor, m_nonterminalTensor, m_batchSize);
+					m_replayMemory.sample(m_stateTensor, m_actionTensor, m_rewardTensor, m_nextStateTensor, m_nextDiscountTensor, m_batchSize);
 				}
 			}
 
@@ -345,7 +330,7 @@ protected:
 				}
 			}
 			assert(nextValueTensor.dim() == 2 && nextValueTensor.size(0) == m_batchSize && nextValueTensor.size(1) == 1);
-			Tensor targetTensor = m_rewardTensor + nextValueTensor * m_nonterminalTensor * m_multiStepDiscountRate;
+			Tensor targetTensor = m_rewardTensor + nextValueTensor * m_nextDiscountTensor;
 
 			assert(targetTensor.dim() == 2 && targetTensor.size(0) == m_batchSize && targetTensor.size(1) == 1);
 			Tensor lossTensor;
@@ -372,6 +357,7 @@ protected:
 			}
 			++m_valueNetUpdateCount;
 		}
+		++m_learnCount;
 	}
 
 	template<typename Element_t, typename TensorScalar_t>
@@ -396,30 +382,24 @@ protected:
 	ActionValueNet_t m_targetNet;
 	ReplayMemory_t& m_replayMemory;
 	float m_discountRate;
-	uint32_t m_multiStep;
 	uint32_t m_minReplaySize;
 	uint32_t m_batchSize;
 	uint32_t m_learnFreq;
-	uint32_t m_stepCount{};
+	uint32_t m_learnCount{};
 	uint32_t m_targetUpdateFreq;
 	uint32_t m_valueNetUpdateCount{};
 	Tensor m_stateTensor;
 	Tensor m_actionTensor;
 	Tensor m_rewardTensor;
 	Tensor m_nextStateTensor;
-	Tensor m_nonterminalTensor;
+	Tensor m_nextDiscountTensor;
 	Tensor m_weightTensor;
 	std::vector<uint32_t> m_sampleIndices;
 protected:
 	State_t m_state;
 	Action_t m_action;
-protected:
-	//for multi step
-	State_t* m_multiStepStates{};
-	Action_t* m_multiStepActions{};
-	float* m_multiStepRewards{};
-	uint32_t m_currentStep{};
-	float m_multiStepDiscountRate{};
+	MultiStepBuffer<State_t, Action_t> m_multiStepBuffer;
+	bool m_multiStepCompound;
 };
 
 template<typename ReplayMemory_t, typename ActionValueNet_t, typename Policy_t = EpsilonGreedy<ActionValueNet_t>>

@@ -5,12 +5,6 @@
 
 BEGIN_RLTL_IMPL
 
-enum class EnvironmentStatus
-{
-	es_normal,
-	es_terminated,
-	es_truncated
-};
 
 template<typename StateSpace_t, typename ActionSpace_t>
 class Environment

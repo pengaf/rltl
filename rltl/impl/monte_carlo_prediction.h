@@ -3,13 +3,21 @@
 
 BEGIN_RLTL_IMPL
 
-template<typename State_t, typename Action_t, typename StateValueFunction_t, typename Policy_t>
+template<typename State_t, typename Action_t>
 class MonteCarloPrediction
 {
 public:
-	MonteCarloPrediction(StateValueFunction_t& valueFunction, Policy_t& policy, float learningRate, float discountRate = 1.0f) :
+	typedef State_t State_t;
+	typedef Action_t Action_t;
+	typedef StateValueFunction<State_t> StateValueFunction_t;
+	typedef PolicyFunction<State_t, Action_t> PolicyFunction_t;
+	typedef paf::SharedPtr<StateValueFunction_t> StateValueFunctionPtr;
+	typedef paf::SharedPtr<PolicyFunction_t> PolicyFunctionPtr;
+	typedef paf::SharedPtr<MonteCarloPrediction> MonteCarloPredictionPtr;
+public:
+	MonteCarloPrediction(StateValueFunctionPtr stateValueFunction, PolicyFunctionPtr policy, float learningRate, float discountRate = 1.0f) :
+		m_stateValueFunction(stateValueFunction),
 		m_policy(policy),
-		m_valueFunction(valueFunction),
 		m_learningRate(learningRate),
 		m_discountRate(discountRate)
 public:
@@ -26,7 +34,7 @@ public:
 		Action_t action = m_policy.takeAction(nextState);
 		return action;
 	}
-	void lastStep(float reward, const State_t& nextState, bool nonterminal)
+	void lastStep(float reward, const State_t& nextState, bool terminated)
 	{
 		m_trajectory.emplace_back(m_state, reward);
 		float g = 0;
@@ -35,14 +43,14 @@ public:
 		{
 			SR& sr = m_trajectory[count - 1 - i];
 			g = g * m_discountRate + sar.reward;
-			float value = m_valueFunction.getValue(sar.state);
+			float value = m_stateValueFunction.getValue(sar.state);
 			float newValue = value + (g - value) * m_learningRate;
-			m_valueFunction.setValue(sar.state, newValue);
+			m_stateValueFunction.setValue(sar.state, newValue);
 		}
 	}
 protected:
-	Policy_t& m_policy;
-	ActionValueFunction_t& m_valueFunction;
+	StateValueFunctionPtr m_stateValueFunction;
+	PolicyFunctionPtr m_policy;
 	float m_learningRate;
 	float m_discountRate;
 protected:
@@ -56,6 +64,11 @@ protected:
 		{}
 	};
 	std::vector<SAR> m_trajectory;
+public:
+	static MonteCarloPredictionPtr Make(StateValueFunctionPtr stateValueFunction, PolicyFunctionPtr policy, float learningRate, float discountRate = 1.0f)
+	{
+		return MonteCarloPredictionPtr::Make(stateValueFunction, policy, learningRate, discountRate);
+	}
 };
 
 END_RLTL_IMPL

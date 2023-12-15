@@ -20,6 +20,12 @@ public:
 		return distribution(generator());
 		//return ::rand() % high;
 	}
+	static uint32_t randuint(uint32_t high)
+	{
+		std::uniform_int_distribution<uint32_t> distribution(0, high - 1);
+		return distribution(generator());
+		//return ::rand() % high;
+	}
 	static std::default_random_engine& generator()
 	{
 		static std::default_random_engine s_generator;

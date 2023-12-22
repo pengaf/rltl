@@ -11,14 +11,14 @@
 BEGIN_RLTL_IMPL
 
 typedef torch::Tensor Tensor;
+typedef torch::nn::Module Module;
 typedef torch::optim::Optimizer Optimizer;
 
 enum class SpaceCategory
 {
-	discrete_space,
-	multi_discrete_space,
-	normalized_discrete_space,
-	box_space,
+	index_space,//integer
+	vector_space,//1-d tensor
+	image_space,//3-d tensor
 };
 
 enum class EnvironmentStatus
@@ -54,9 +54,86 @@ template<typename Element_t>
 class Space : public paf::Introspectable
 {
 public:
-	virtual Element_t low() const = 0;
-	virtual Element_t high() const = 0;
+	typedef Element_t Element_t;
+public:
+	virtual SpaceCategory category() = 0;
+	//virtual Element_t sample() = 0;
 };
+
+
+template<typename Element_t = uint32_t>
+class IndexSpace : public Space<Element_t>
+{
+public:
+	IndexSpace(uint32_t count) :
+		m_count(count)
+	{}
+public:
+	SpaceCategory category()
+	{
+		return SpaceCategory::index_space;
+	}
+	size_t count() const
+	{
+		return m_count;
+	}
+public:
+	uint32_t m_count;
+};
+
+template<typename Element_t>
+class VectorSpace : public Space<Element_t>
+{
+public:
+	typedef Element_t Element_t;
+public:
+	VectorSpace(Element_t low, Element_t high) :
+		m_low(low),
+		m_high(high)
+	{}
+public:
+	SpaceCategory category()
+	{
+		return SpaceCategory::vector_space;
+	}
+public:
+	const Element_t& low() const
+	{
+		return m_low;
+	}
+	const Element_t& high() const
+	{
+		return m_high;
+	}
+protected:
+	Element_t m_low;
+	Element_t m_high;
+};
+
+template<typename Element_t>
+class ImageSpace : public Space<Element_t>
+{
+public:
+	typedef Element_t Element_t;
+public:
+	SpaceCategory category()
+	{
+		return SpaceCategory::image_space;
+	}
+public:
+	float low() const
+	{
+		return m_low;
+	}
+	float high() const
+	{
+		return m_high;
+	}
+protected:
+	float m_low;
+	float m_high;
+};
+
 
 template<typename State_t, typename Action_t>
 class Environment : public paf::Introspectable
@@ -64,8 +141,10 @@ class Environment : public paf::Introspectable
 public:
 	typedef State_t State_t;
 	typedef Action_t Action_t;
-	typedef paf::SharedPtr<Space<State_t>> StateSpacePtr;
-	typedef paf::SharedPtr<Space<Action_t>> ActionSpacePtr;
+	typedef Space<State_t> StateSpace_t;
+	typedef Space<Action_t> ActionSpace_t;
+	typedef paf::SharedPtr<StateSpace_t> StateSpacePtr;
+	typedef paf::SharedPtr<ActionSpace_t> ActionSpacePtr;
 public:
 	virtual StateSpacePtr stateSpace() = 0;
 	virtual ActionSpacePtr actionSpace() = 0;
@@ -82,8 +161,8 @@ public:
 	typedef State_t State_t;
 	typedef Action_t Action_t;
 public:
-	virtual Action_t maxAction(const State_t& state, bool firstMax = true) const = 0;
-	virtual void getValues(std::vector<float>& values, const State_t& state) const = 0;
+	virtual Action_t maxAction(const State_t& state, bool firstMax = true) = 0;
+	virtual void getValues(std::vector<float>& values, const State_t& state) = 0;
 	virtual uint32_t actionCount() const = 0;
 };
 
@@ -100,7 +179,7 @@ class StateValueFunction : public paf::Introspectable
 public:
 	typedef State_t State_t;
 public:
-	virtual float getValue(const State_t& state) const = 0;
+	virtual float getValue(const State_t& state) = 0;
 };
 
 template<typename State_t, typename Action_t>
@@ -110,22 +189,23 @@ public:
 	typedef State_t State_t;
 	typedef Action_t Action_t;
 public:
-	virtual Action_t takeAction(const State_t& state) const = 0;
+	virtual Action_t takeAction(const State_t& state) = 0;
 	virtual uint32_t actionCount() const = 0;
 };
 
-//template<typename State_t, typename Action_t>
-//class DiscretePolicyFunction : public PolicyFunction<State_t, Action_t>
-//{
-//public:
-//	virtual uint32_t actionCount() const = 0;
-//};
+template<typename State_t, typename Action_t>
+class DiscretePolicyFunction : public PolicyFunction<State_t, Action_t>
+{
+public:
+	//virtual uint32_t actionCount() const = 0;
+};
 
 template<typename State_t, typename Action_t>
 class ActionValueNet : public ActionValueFunction<State_t, Action_t>
 {
 public:
 	virtual Tensor forward(const Tensor& stateTensor) = 0;
+	virtual Module* module() = 0;
 };
 
 template<typename State_t>
@@ -133,6 +213,7 @@ class StateValueNet : public StateValueFunction<State_t>
 {
 public:
 	virtual Tensor forward(const Tensor& stateTensor) = 0;
+	virtual Module* module() = 0;
 };
 
 template<typename State_t, typename Action_t>
@@ -140,6 +221,7 @@ class PolicyNet : public PolicyFunction<State_t, Action_t>
 {
 public:
 	virtual Tensor forward(const Tensor& stateTensor) = 0;
+	virtual Module* module() = 0;
 };
 
 template<typename State_t, typename Action_t>
@@ -168,22 +250,22 @@ public:
 	virtual void lastStep(float reward, const State_t& nextState, bool terminated) = 0;
 };
 
-//class Callback : public paf::Introspectable
-//{
-//public:
-//	virtual void beginTrain()
-//	{}
-//	virtual void beginEpisode(uint32_t episode)
-//	{}
-//	virtual void beginStep(uint32_t episode, uint32_t step)
-//	{}
-//	virtual void endStep(uint32_t episode, uint32_t step, float reward)
-//	{}
-//	virtual void endEpisode(uint32_t episode, uint32_t totalStepsInEpisode, float totalRewardsInEpisode)
-//	{}
-//	virtual void endTrain()
-//	{}
-//};
+class Callback : public paf::Introspectable
+{
+public:
+	virtual void beginTrain()
+	{}
+	virtual void beginEpisode(uint32_t episode)
+	{}
+	virtual void beginStep(uint32_t episode, uint32_t step)
+	{}
+	virtual void endStep(uint32_t episode, uint32_t step, float reward)
+	{}
+	virtual void endEpisode(uint32_t episode, uint32_t totalStepsInEpisode, float totalRewardsInEpisode)
+	{}
+	virtual void endTrain()
+	{}
+};
 
 
 END_RLTL_IMPL

@@ -1,7 +1,8 @@
 set(ProjectName rltl)
 
 set(InterfaceFiles
-	"value_function.i"
+"utility.i"
+"value_function.i"
 )
 source_group("Interface Files" FILES ${InterfaceFiles})
 
@@ -47,7 +48,7 @@ set(impl
 "impl/random.h"
 "impl/replay_memory.h"
 "impl/sarsa.h"
-"impl/space_normalizer.h"
+"impl/space_transform.h"
 "impl/space.h"
 "impl/state_value_net.h"
 "impl/state_value_table.h"

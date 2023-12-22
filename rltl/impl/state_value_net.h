@@ -83,18 +83,34 @@ protected:
 	std::vector<uint32_t> m_hiddenDims;
 };
 
-template<typename State_t = float>
-class MLPStateValueNet : public torch::nn::ModuleHolder<MLPStateValueNetImpl>
+template<typename State_t>
+class MLPStateValueNet : public StateValueNet<State_t>, public torch::nn::ModuleHolder<MLPStateValueNetImpl>
 {
 public:
-	typedef State_t State_t;
-	
+	typedef paf::SharedPtr<MLPStateValueNet> MLPStateValueNetPtr;
 public:
 	using torch::nn::ModuleHolder<MLPStateValueNetImpl>::ModuleHolder;
 public:
-	float getValue(const State_t& state)
+	float getValue(const State_t& state) override
 	{
-		return NN_getStateValue<decltype(*this), State_t, float>(*this, state);
+		return NN_getStateValue<decltype(*this), State_t>(*this, state);
+	}
+	Tensor forward(const Tensor& stateTensor) override
+	{
+		return impl_->forward(stateTensor);
+	}
+	Module* module() override
+	{
+		return impl_.get();
+	}
+public:
+	static MLPStateValueNetPtr Make(uint32_t stateDim, uint32_t hiddenDim, size_t numHiddens = 1)
+	{
+		return MLPStateValueNetPtr::Make(stateDim, hiddenDim, numHiddens);
+	}
+	static MLPStateValueNetPtr Make(uint32_t stateDim, const std::vector<uint32_t>& hiddenDims)
+	{
+		return MLPStateValueNetPtr::Make(stateDim, hiddenDims);
 	}
 };
 

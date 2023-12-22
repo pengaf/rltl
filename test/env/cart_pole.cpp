@@ -14,15 +14,26 @@ const float c_tau = 0.02;//  # seconds between state updates
 const float c_theta_threshold_radians = 12 * 2 * 3.1415926 / 360;
 const float c_x_threshold = 2.4;
 
-CartPole::CartPole(uint32_t maxStep) :
-	Environment(m_stateSpace, m_actionSpace),
-	m_stateSpace({ -c_x_threshold * 2, -FLT_MAX, -c_theta_threshold_radians * 2, -FLT_MAX },
-		{ c_x_threshold * 2, FLT_MAX, c_theta_threshold_radians * 2, FLT_MAX }),
-	m_actionSpace(0, 2),
+CartPole::CartPole(uint32_t maxStep):
 	m_maxStep(maxStep),
 	m_step(0)
 {
+	State_t low = { -c_x_threshold * 2, -FLT_MAX, -c_theta_threshold_radians * 2, -FLT_MAX };
+	State_t high = { c_x_threshold * 2, FLT_MAX, c_theta_threshold_radians * 2, FLT_MAX };
+
+	m_stateSpace = ConcreteStateSpacePtr::Make(low, high);
+	m_actionSpace = ConcreteActionSpacePtr::Make(2);
 	m_currentState = { 0, 0 , 0 , 0 };
+}
+
+CartPole::StateSpacePtr CartPole::stateSpace()
+{
+	return m_stateSpace;
+}
+
+CartPole::ActionSpacePtr CartPole::actionSpace()
+{
+	return m_actionSpace;
 }
 
 CartPole::State_t CartPole::reset(int seed)

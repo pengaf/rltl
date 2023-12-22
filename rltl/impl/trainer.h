@@ -1,6 +1,5 @@
 #pragma once
 #include "utility.h"
-#include "callback.h"
 
 BEGIN_RLTL_IMPL
 
@@ -13,12 +12,7 @@ public:
 	typedef Agent<State_t, Action_t> Agent_t;
 	typedef Environment<State_t, Action_t> Environment_t;
 public:
-	void addEpisodeCallback(EpisodeCallback* episodeCallback);
-	void removeEpisodeCallback(EpisodeCallback* episodeCallback);
-	void addStepCallback(StepCallback* stepCallback);
-	void removeStepCallback(StepCallback* stepCallback);
-public:
-	void trainEpisodes(Agent_t* agent, Environment_t* environment, uint32_t numEpisodes, Callback* callback)
+	static void TrainEpisodes(Agent_t* agent, Environment_t* environment, uint32_t numEpisodes, Callback* callback)
 	{
 		//if (nullptr == agent || nullptr == environment)
 		//{
@@ -39,20 +33,20 @@ public:
 			{
 				callback->beginStep(episode, 0);
 			}
-			State_t state = environment.reset();
-			Action_t action = agent.firstStep(state);
+			State_t state = environment->reset();
+			Action_t action = agent->firstStep(state);
 			uint32_t numSteps = 0;
 			float totalReward = 0;
 			while (true)
 			{
 				float reward;
 				State_t nextState;
-				EnvironmentStatus envStatus = environment.step(reward, nextState, action);
+				EnvironmentStatus envStatus = environment->step(reward, nextState, action);
 				++numSteps;
 				totalReward += reward;
 				if (EnvironmentStatus::es_normal == envStatus)
 				{
-					action = agent.nextStep(reward, nextState);
+					action = agent->nextStep(reward, nextState);
 					if (callback)
 					{
 						callback->endStep(episode, numSteps, reward);
@@ -61,7 +55,7 @@ public:
 				}
 				else
 				{
-					agent.lastStep(reward, nextState, envStatus == EnvironmentStatus::es_terminated);
+					agent->lastStep(reward, nextState, envStatus == EnvironmentStatus::es_terminated);
 					if (callback)
 					{
 						callback->endStep(episode, numSteps, reward);
@@ -77,7 +71,7 @@ public:
 		}
 	}
 
-	void trainSteps(Agent_t* agent, Environment_t* environment, uint64_t maxSteps, Callback* callback)
+	static void TrainSteps(Agent_t* agent, Environment_t* environment, uint64_t maxSteps, Callback* callback)
 	{
 		if (nullptr == agent || nullptr == environment || 0 == maxSteps)
 		{

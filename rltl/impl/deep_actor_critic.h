@@ -3,6 +3,7 @@
 #include "trajectory_buffer.h"
 #include "array.h"
 #include "neural_network.h"
+#include "multi_step_buffer.h"
 #include <assert.h>
 
 BEGIN_RLTL_IMPL
@@ -71,17 +72,18 @@ public:
 };
 
 
-template<typename State_t, typename Action_t>
-//template<typename PolicyNet_t, typename StateValueNet_t, typename Policy_t = PolicyNet_t>
-class DeepActorCritic
+//template<typename State_t, typename Action_t>
+template<typename PolicyNet_t, typename StateValueNet_t, typename PolicyFunction_t = PolicyNet_t>
+class DeepActorCritic : public Agent<typename PolicyNet_t::State_t, typename PolicyNet_t::Action_t>
 {
 public:
-	typedef State_t State_t;
-	typedef Action_t Action_t;
-	typedef PolicyNet<State_t, Action_t> PolicyNet_t;
-	typedef StateValueNet<State_t> StateValueNet_t;
-	typedef PolicyFunction<State_t, Action_t> PolicyFunction_t;
-
+	//typedef State_t State_t;
+	//typedef Action_t Action_t;
+	//typedef PolicyNet<State_t, Action_t> PolicyNet_t;
+	//typedef StateValueNet<State_t> StateValueNet_t;
+	//typedef PolicyFunction<State_t, Action_t> PolicyFunction_t;
+	typedef typename PolicyNet_t::State_t State_t;
+	typedef typename PolicyNet_t::Action_t Action_t;
 	typedef paf::SharedPtr<PolicyNet_t> PolicyNetPtr;
 	typedef paf::SharedPtr<StateValueNet_t> StateValueNetPtr;
 	typedef std::shared_ptr<Optimizer> OptimizerPtr;
@@ -93,7 +95,6 @@ public:
 		m_criticNet(criticNet),
 		m_optimizer(optimizer),
 		m_policy(policy),
-		m_criticTargetNet(PolicyNetPtr::Make(*criticNet.get())),
 		m_discountRate(options.discountRate()),
 		m_batchSize(options.batchSize()),
 		m_targetNetUpdateFreq(options.targetNetUpdateFreq()),
@@ -106,6 +107,8 @@ public:
 		m_prioritizedAlpha(options.prioritizedAlpha()),
 		m_prioritizedBeta(options.prioritizedBeta())
 	{
+		m_criticTargetNet = StateValueNetPtr::Make(*criticNet.get()->get());
+
 		uint32_t multiStep = options.multiStep();
 		if (multiStep > 1)
 		{
@@ -117,7 +120,7 @@ public:
 		}
 		if(useTargetNet())
 		{
-			NN_copyParameters(m_criticTargetNet, m_criticNet);
+			NN_copyParameters(m_criticTargetNet.get()->get(), m_criticNet.get()->get());
 		}
 		uint32_t bufferCapacity;
 		if(ExperienceReplay::no_experience_replay == m_experienceReplay)
@@ -138,7 +141,7 @@ public:
 	Action_t firstStep(const State_t& firstState)
 	{
 		m_state = firstState;
-		m_action = m_policy.takeAction(firstState);
+		m_action = m_policy->takeAction(firstState);
 		m_multiStepBuffer.reset();
 		return m_action;
 	}
@@ -171,7 +174,7 @@ public:
 		}
 		learn(false);
 		m_state = nextState;
-		m_action = m_policy.takeAction(nextState);
+		m_action = m_policy->takeAction(nextState);
 		return m_action;
 	}
 
@@ -290,16 +293,16 @@ protected:
 		Tensor logProbTensor = torch::nn::functional::log_softmax(m_actorNet->forward(stateTensor), 1);
 		Tensor actorLossTensor = torch::sum(logProbTensor.gather(1, actionTensor) * deltaTensor.detach());
 
-		m_optimizer.zero_grad();
+		m_optimizer->zero_grad();
 		actorLossTensor.backward();
 		criticLossTensor.backward();
-		m_optimizer.step();
+		m_optimizer->step();
 
 		if (useTargetNet())
 		{
 			if (m_learnCount % m_targetNetUpdateFreq == 0)
 			{
-				NN_copyParameters(m_criticTargetNet, m_criticNet);
+				NN_copyParameters(m_criticTargetNet->module(), m_criticNet->module());
 			}
 		}		
 	}
@@ -317,8 +320,6 @@ protected:
 		Tensor tensor = torch::empty(tensorShape, torch::TensorOptions().dtype(dtype));
 		return tensor;
 	}
-
-	//template<typename Array_t, typename TensorAccessor>
 protected:
 	PolicyNetPtr m_actorNet;
 	StateValueNetPtr m_criticNet;

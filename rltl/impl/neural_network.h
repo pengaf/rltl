@@ -254,7 +254,7 @@ inline void NN_getStateValues(std::vector<float>& values, Network_t& network, co
 	auto valueAccessor = valueTensor.accessor<int64_t, 2>();	
 	size_t count = valueTensor.size(1);
 	values.resize(count);
-	for (uint32_t i = 0; i < m_actionCount; ++i)
+	for (uint32_t i = 0; i < count; ++i)
 	{
 		values[i] = valueAccessor[0][i];
 	}
@@ -315,8 +315,8 @@ inline Action_t NN_actionBySoftmax(Network_t& network, const State_t& state)
 }
 
 
-template<typename Net_t>
-inline void NN_copyParameters(Net_t& dst, const Net_t& src)
+//template<typename Net_t>
+inline void NN_copyParameters(torch::nn::Module* dst, const torch::nn::Module* src)
 {
 	std::stringstream stream;
 	torch::serialize::OutputArchive outputArchive(std::make_shared<torch::jit::CompilationUnit>());

@@ -1,36 +1,80 @@
 #pragma once
 #include "agent.h"
-#include "replay_memory.h"
+#include "trajectory_buffer.h"
 #include "array.h"
 #include "neural_network.h"
+#include "multi_step_buffer.h"
+#include "exploration.h"
 
 BEGIN_RLTL_IMPL
 
-struct DeepActionValueAgentOptions
+struct DeepActionValueOptions
 {
-	DeepActionValueAgentOptions(float discountRate, size_t minReplaySize, size_t batchSize, size_t learnFreq, size_t targetUpdateFreq) :
+	DeepActionValueOptions(float discountRate, size_t batchSize) :
 		m_discountRate(discountRate),
-		m_minReplaySize(minReplaySize),
-		m_batchSize(batchSize),
-		m_learnFreq(learnFreq),
-		m_targetUpdateFreq(targetUpdateFreq)
+		m_batchSize(batchSize)
 	{
-		m_multiStep = 0;
+		m_targetNetUpdateFreq = 0;// target network enabled if > 1
+		m_multiStep = 0;// enabled if > 1
 		m_multiStepCompound = false;
+		m_experienceReplay = ExperienceReplay::no_experience_replay;
+		m_replayMemorySize = 0;
+		m_warmUpSize = 0;
+		m_learnFreq = 0;
+		m_prioritizedEpsilon = FLT_EPSILON;
+		m_prioritizedAlpha = 1.0f;
+		m_prioritizedBeta = 1.0f;
 	}
+public:
+	DeepActionValueOptions& targetNetwork(uint32_t targetNetUpdateFreq)
+	{
+		m_targetNetUpdateFreq = targetNetUpdateFreq;
+		return *this;
+	}
+	DeepActionValueOptions& multiStep(uint32_t step, bool compound)
+	{
+		m_multiStep = step;
+		m_multiStepCompound = compound;
+		return *this;
+	}
+	DeepActionValueOptions& experienceReplay(uint32_t replayMemorySize, uint32_t warmUpSize, size_t learnFreq)
+	{
+		m_experienceReplay = ExperienceReplay::experience_replay;
+		m_replayMemorySize = replayMemorySize;
+		m_warmUpSize = warmUpSize;
+		m_learnFreq = learnFreq;
+		return *this;
+	}
+	DeepActionValueOptions& prioritizedExperienceReplay(uint32_t replayMemorySize, uint32_t warmUpSize, size_t learnFreq, float prioritizedAlpha = 1.0f, float prioritizedBeta = 1.0f, float prioritizedEpsilon = FLT_EPSILON)
+	{
+		m_experienceReplay = ExperienceReplay::prioritized_experience_replay;
+		m_replayMemorySize = replayMemorySize;
+		m_warmUpSize = warmUpSize;
+		m_learnFreq = learnFreq;
+		m_prioritizedAlpha = prioritizedAlpha;
+		m_prioritizedBeta = prioritizedBeta;
+		m_prioritizedEpsilon = prioritizedEpsilon;
+		return *this;
+	}
+public:
 	RLTL_ARG(float, discountRate);
-	RLTL_ARG(uint32_t, minReplaySize);
 	RLTL_ARG(uint32_t, batchSize);
-	RLTL_ARG(uint32_t, learnFreq);
-	RLTL_ARG(uint32_t, targetUpdateFreq);
+	RLTL_ARG(uint32_t, targetNetUpdateFreq);
 	RLTL_ARG(uint32_t, multiStep);
 	RLTL_ARG(bool, multiStepCompound);
+	RLTL_ARG(ExperienceReplay, experienceReplay);
+	RLTL_ARG(uint32_t, replayMemorySize);
+	RLTL_ARG(uint32_t, warmUpSize);
+	RLTL_ARG(uint32_t, learnFreq);
+	RLTL_ARG(float, prioritizedEpsilon);
+	RLTL_ARG(float, prioritizedAlpha);
+	RLTL_ARG(float, prioritizedBeta);
 };
 
-struct DeepQLearningOptions : DeepActionValueAgentOptions
+struct DeepQLearningOptions : DeepActionValueOptions
 {
-	DeepQLearningOptions(float discountRate, size_t minReplaySize, size_t batchSize, size_t learnFreq, size_t targetUpdateFreq, bool doubleDQN) :
-		DeepActionValueAgentOptions(discountRate, minReplaySize, batchSize, learnFreq, targetUpdateFreq),
+	DeepQLearningOptions(float discountRate, size_t batchSize, bool doubleDQN) :
+		DeepActionValueOptions(discountRate, batchSize),
 		m_doubleDQN(doubleDQN)
 	{}
 	RLTL_ARG(bool, doubleDQN);
@@ -46,9 +90,9 @@ public:
 	bool m_doubleDQN;
 };
 
-struct DeepSarsaOptions : DeepActionValueAgentOptions
+struct DeepSarsaOptions : DeepActionValueOptions
 {
-	using DeepActionValueAgentOptions::DeepActionValueAgentOptions;
+	using DeepActionValueOptions::DeepActionValueOptions;
 };
 
 struct DeepSarsaExtData
@@ -60,9 +104,9 @@ public:
 	Tensor m_nextActionTensor;
 };
 
-struct DeepExpectedSarsaOptions : DeepActionValueAgentOptions
+struct DeepExpectedSarsaOptions : DeepActionValueOptions
 {
-	using DeepActionValueAgentOptions::DeepActionValueAgentOptions;
+	using DeepActionValueOptions::DeepActionValueOptions;
 };
 
 struct DeepExpectedSarsaExtData
@@ -98,56 +142,81 @@ struct DeepActionValueTraits<TargetEvaluationMethod::expected_sarsa>
 };
 
 
-template<TargetEvaluationMethod t_evaluationMethod, typename ReplayMemory_t, typename ActionValueNet_t, typename Policy_t = EpsilonGreedy<ActionValueNet_t>>
-class DeepQNetwork : public DeepActionValueTraits<t_evaluationMethod>::ExtData
+template<TargetEvaluationMethod t_evaluationMethod, typename ActionValueNet_t, typename PolicyFunction_t = EpsilonGreedy<typename ActionValueNet_t::State_t, typename ActionValueNet_t::Action_t>>
+class DeepQNetwork : public Agent<typename ActionValueNet_t::State_t, typename ActionValueNet_t::Action_t>, public DeepActionValueTraits<t_evaluationMethod>::ExtData
 {
 public:
 	static_assert(TargetEvaluationMethod::q_learning == t_evaluationMethod || TargetEvaluationMethod::sarsa == t_evaluationMethod || TargetEvaluationMethod::expected_sarsa == t_evaluationMethod);
 	//static_assert(SampleDepthCategory::td_0 == t_sampleDepthCategory || SampleDepthCategory::n_step_td == t_evaluationMethod || SampleDepthCategory::monte_carlo == t_evaluationMethod);
 	typedef typename ActionValueNet_t::State_t State_t;
 	typedef typename ActionValueNet_t::Action_t Action_t;
+
+	typedef paf::SharedPtr<ActionValueNet_t> ActionValueNetPtr;
+	typedef std::shared_ptr<Optimizer> OptimizerPtr;
+	typedef paf::SharedPtr<PolicyFunction_t> PolicyFunctionPtr;
 	typedef typename DeepActionValueTraits<t_evaluationMethod>::Options Options;
+	typedef paf::SharedPtr<DeepQNetwork> DeepQNetworkPtr;
 public:
-	DeepQNetwork(ReplayMemory_t& replayMemory, ActionValueNet_t& valueNet, Optimizer& optimizer, Policy_t& policy, const Options& options) :
+	DeepQNetwork(ActionValueNetPtr valueNet, OptimizerPtr optimizer, PolicyFunctionPtr policy, const Options& options) :
 		DeepActionValueTraits<t_evaluationMethod>::ExtData(options),
 		m_valueNet(valueNet),
 		m_optimizer(optimizer),
 		m_policy(policy),
-		m_targetNet(*valueNet.get()),
-		m_replayMemory(replayMemory),
 		m_discountRate(options.discountRate()),
-		m_minReplaySize(options.minReplaySize()),
 		m_batchSize(options.batchSize()),
+		m_targetNetUpdateFreq(options.targetNetUpdateFreq()),
+		m_multiStepCompound(options.multiStepCompound()),
+		m_experienceReplay(options.experienceReplay()),
+		m_replayMemorySize(options.replayMemorySize()),
+		m_warmUpSize(options.warmUpSize()),
 		m_learnFreq(options.learnFreq()),
-		m_targetUpdateFreq(options.targetUpdateFreq()),
-		m_multiStepCompound(options.multiStepCompound())
+		m_prioritizedEpsilon(options.prioritizedEpsilon()),
+		m_prioritizedAlpha(options.prioritizedAlpha()),
+		m_prioritizedBeta(options.prioritizedBeta())
 	{
-		m_stateTensor = MakeTensor<State_t>(torch::kFloat32);
-		m_actionTensor = MakeTensor<Action_t>(torch::kInt64);
-		m_rewardTensor = MakeTensor<float>(torch::kFloat32);
-		m_nextStateTensor = MakeTensor<State_t>(torch::kFloat32);
-		m_nextDiscountTensor = MakeTensor<float>(torch::kFloat32);
-		if constexpr (TargetEvaluationMethod::sarsa == t_evaluationMethod)
-		{
-			replayMemory.prepareNextActions();
-			m_nextActionTensor = MakeTensor<Action_t>(torch::kInt64);
-		}
-		if (m_replayMemory.isPrioritized())
-		{
-			m_weightTensor = MakeTensor<float>(torch::kFloat32);
-			m_sampleIndices.resize(m_batchSize);
-		}
+		m_targetNet = ActionValueNetPtr::Make(*valueNet.get()->get());
 		uint32_t multiStep = options.multiStep();
 		if (multiStep > 1)
 		{
 			m_multiStepBuffer.initialize(multiStep);
+		}
+		if (m_learnFreq < 1)
+		{
+			m_learnFreq = 1;
+		}
+		if (useTargetNet())
+		{
+			NN_copyParameters(m_targetNet.get()->get(), m_valueNet.get()->get());
+		}
+		uint32_t bufferCapacity;
+		if (ExperienceReplay::no_experience_replay == m_experienceReplay)
+		{
+			bufferCapacity = m_batchSize + multiStep * 2;
+		}
+		else
+		{
+			bufferCapacity = std::max(m_replayMemorySize, m_warmUpSize);
+		}
+		m_trajectoryBuffer.initialize(bufferCapacity, TargetEvaluationMethod::sarsa == t_evaluationMethod, ExperienceReplay::prioritized_experience_replay == m_experienceReplay);
+		m_stateTensor = MakeTensor<State_t>(torch::kFloat32, m_batchSize);
+		m_actionTensor = MakeTensor<Action_t>(torch::kInt64, m_batchSize);
+		m_rewardTensor = MakeTensor<float>(torch::kFloat32, m_batchSize);
+		m_nextStateTensor = MakeTensor<State_t>(torch::kFloat32, m_batchSize);
+		m_nextDiscountTensor = MakeTensor<float>(torch::kFloat32, m_batchSize);
+		if constexpr(TargetEvaluationMethod::sarsa == t_evaluationMethod)
+		{
+			m_nextActionTensor = MakeTensor<Action_t>(torch::kInt64);
+		}
+		if (ExperienceReplay::prioritized_experience_replay == m_experienceReplay)
+		{
+			m_sampleIndices.resize(m_batchSize);
 		}
 	}
 public:
 	Action_t firstStep(const State_t& firstState)
 	{
 		m_state = firstState;
-		m_action = m_policy.takeAction(firstState);
+		m_action = m_policy->takeAction(firstState);
 		m_multiStepBuffer.reset();
 		return m_action;
 	}
@@ -155,7 +224,7 @@ public:
 	{
 		if constexpr (TargetEvaluationMethod::sarsa == t_evaluationMethod)
 		{
-			Action_t nextAction = m_policy.takeAction(nextState);
+			Action_t nextAction = m_policy->takeAction(nextState);
 			if (m_multiStepBuffer)
 			{
 				m_multiStepBuffer.append(m_state, m_action, reward, m_discountRate);
@@ -165,7 +234,7 @@ public:
 					for (size_t i = 0; i < count; ++i)
 					{
 						auto sar = m_multiStepBuffer.get(m_multiStepBuffer.stepCount() - count + i);
-						m_replayMemory.append(sar->state, sar->action, sar->accReward, nextState, sar->accDiscountRate, nextAction);
+						m_trajectoryBuffer.append(sar->state, sar->action, sar->accReward, nextState, sar->accDiscountRate, nextAction);
 					}
 				}
 				else
@@ -173,15 +242,15 @@ public:
 					if (m_multiStepBuffer.stepCount() >= m_multiStepBuffer.multiStep())
 					{
 						auto sar = m_multiStepBuffer.getHead();
-						m_replayMemory.append(sar->state, sar->action, sar->accReward, nextState, sar->accDiscountRate, nextAction);
+						m_trajectoryBuffer.append(sar->state, sar->action, sar->accReward, nextState, sar->accDiscountRate, nextAction);
 					}
 				}
 			}
 			else
 			{
-				m_replayMemory.append(m_state, m_action, reward, nextState, m_discountRate, nextAction);
+				m_trajectoryBuffer.append(m_state, m_action, reward, nextState, m_discountRate, nextAction);
 			}
-			learn();
+			learn(false);
 			m_state = nextState;
 			m_action = nextAction;
 		}
@@ -196,7 +265,7 @@ public:
 					for (size_t i = 0; i < count; ++i)
 					{
 						auto sar = m_multiStepBuffer.get(m_multiStepBuffer.stepCount() - count + i);
-						m_replayMemory.append(sar->state, sar->action, sar->accReward, nextState, sar->accDiscountRate);
+						m_trajectoryBuffer.append(sar->state, sar->action, sar->accReward, nextState, sar->accDiscountRate);
 					}
 				}
 				else
@@ -204,17 +273,17 @@ public:
 					if (m_multiStepBuffer.stepCount() >= m_multiStepBuffer.multiStep())
 					{
 						auto sar = m_multiStepBuffer.getHead();
-						m_replayMemory.append(sar->state, sar->action, sar->accReward, nextState, sar->accDiscountRate);
+						m_trajectoryBuffer.append(sar->state, sar->action, sar->accReward, nextState, sar->accDiscountRate);
 					}
 				}
 			}
 			else
 			{
-				m_replayMemory.append(m_state, m_action, reward, nextState, m_discountRate);
+				m_trajectoryBuffer.append(m_state, m_action, reward, nextState, m_discountRate);
 			}
-			learn();
+			learn(false);
 			m_state = nextState;
-			m_action = m_policy.takeAction(nextState);
+			m_action = m_policy->takeAction(nextState);
 		}
 		return m_action;
 	}
@@ -222,7 +291,7 @@ public:
 	{
 		if constexpr (TargetEvaluationMethod::sarsa == t_evaluationMethod)
 		{
-			Action_t nextAction = m_policy.takeAction(nextState);
+			Action_t nextAction = m_policy->takeAction(nextState);
 			if (m_multiStepBuffer)
 			{
 				m_multiStepBuffer.append(m_state, m_action, reward, m_discountRate);
@@ -230,12 +299,12 @@ public:
 				for (size_t i = 0; i < count; ++i)
 				{
 					auto sar = m_multiStepBuffer.get(m_multiStepBuffer.stepCount() - count + i);
-					m_replayMemory.append(sar->state, sar->action, sar->accReward, nextState, terminated ? 0 : sar->accDiscountRate, nextAction);
+					m_trajectoryBuffer.append(sar->state, sar->action, sar->accReward, nextState, terminated ? 0 : sar->accDiscountRate, nextAction);
 				}
 			}
 			else
 			{ 
-				m_replayMemory.append(m_state, m_action, reward, nextState, terminated ? 0 : m_discountRate, nextAction);
+				m_trajectoryBuffer.append(m_state, m_action, reward, nextState, terminated ? 0 : m_discountRate, nextAction);
 			}
 		}
 		else
@@ -247,125 +316,177 @@ public:
 				for (size_t i = 0; i < count; ++i)
 				{
 					auto sar = m_multiStepBuffer.get(m_multiStepBuffer.stepCount() - count + i);
-					m_replayMemory.append(sar->state, sar->action, sar->accReward, nextState, terminated ? 0 : sar->accDiscountRate);
+					m_trajectoryBuffer.append(sar->state, sar->action, sar->accReward, nextState, terminated ? 0 : sar->accDiscountRate);
 				}
 			}
 			else
 			{
-				m_replayMemory.append(m_state, m_action, reward, nextState, terminated ? 0 : m_discountRate);
+				m_trajectoryBuffer.append(m_state, m_action, reward, nextState, terminated ? 0 : m_discountRate);
 			}
 		}
-		learn();
+		learn(true);
 	}
 protected:
-	void learn()
+	bool useTargetNet() const
 	{
-		if (m_replayMemory.size() < m_minReplaySize)
+		return m_targetNetUpdateFreq > 1;
+	}
+	void learn(bool lastStep)
+	{
+		++m_tryLearnCount;
+		uint32_t batchSize = m_batchSize;
+		if (ExperienceReplay::no_experience_replay == m_experienceReplay)
 		{
-			return;
+			if (lastStep)
+			{
+				batchSize = m_trajectoryBuffer.size();
+			}
+			else if (m_trajectoryBuffer.size() < m_batchSize)
+			{
+				return;
+			}
 		}
-		if (m_learnCount % m_learnFreq == 0)
+		else
 		{
-			if constexpr (TargetEvaluationMethod::sarsa == t_evaluationMethod)
+			if (m_trajectoryBuffer.size() < m_warmUpSize)
 			{
-				if (m_replayMemory.isPrioritized())
-				{
-					m_replayMemory.sample(m_sampleIndices, m_stateTensor, m_actionTensor, m_rewardTensor, m_nextStateTensor, m_nextDiscountTensor, m_nextActionTensor, m_weightTensor, m_batchSize);
-				}
-				else
-				{
-					m_replayMemory.sample(m_stateTensor, m_actionTensor, m_rewardTensor, m_nextStateTensor, m_nextDiscountTensor, m_nextActionTensor, m_batchSize);
-				}
+				return;
 			}
-			else
+			if (m_tryLearnCount % m_learnFreq != 0)
 			{
-				if (m_replayMemory.isPrioritized())
-				{
-					m_replayMemory.sample(m_sampleIndices, m_stateTensor, m_actionTensor, m_rewardTensor, m_nextStateTensor, m_nextDiscountTensor, m_weightTensor, m_batchSize);
-				}
-				else
-				{
-					m_replayMemory.sample(m_stateTensor, m_actionTensor, m_rewardTensor, m_nextStateTensor, m_nextDiscountTensor, m_batchSize);
-				}
+				return;
 			}
-
-			Tensor valueTensor = m_valueNet->forward(m_stateTensor).gather(1, m_actionTensor);
-			assert(valueTensor.dim() == 2 && valueTensor.size(0) == m_batchSize);
-
-			Tensor nextValueTensor;
-			if constexpr (TargetEvaluationMethod::q_learning == t_evaluationMethod)
-			{
-				if (m_doubleDQN)
-				{
-					Tensor maxActionTensor = std::get<1>(m_valueNet->forward(m_nextStateTensor).max(1, true));
-					nextValueTensor = m_targetNet->forward(m_nextStateTensor).gather(1, maxActionTensor);
-				}
-				else
-				{
-					nextValueTensor = std::get<0>(m_targetNet->forward(m_nextStateTensor).max(1, true));
-				}
-			}
-			else if constexpr(TargetEvaluationMethod::sarsa == t_evaluationMethod)
-			{
-				nextValueTensor = m_targetNet->forward(m_nextStateTensor).gather(1, m_nextActionTensor);//semi-gradient
-			}
-			else
-			{
-				nextValueTensor = torch::empty({m_batchSize, 1}, torch::TensorOptions().dtype(torch::kFloat32));
-				auto nextValueAccessor = nextValueTensor.accessor<float, 2>();
-
-				Tensor nextValuesTensor = m_targetNet->forward(m_nextStateTensor);
-				assert(nextValuesTensor.dim() == 2 && nextValuesTensor.size(0) == m_batchSize);
-				auto nextValuesAccessor = nextValuesTensor.accessor<float, 2>();
-
-				size_t count = nextValuesTensor.size(1);
-				std::vector<float> nextValues(count);
-				for(size_t i = 0; i < m_batchSize; ++i)
-				{
-					for (size_t j = 0; j < count; ++j)
-					{
-						nextValues[j] = nextValuesAccessor[i][j];
-					}
-					nextValueAccessor[i][0] = m_policy.getExpectedValue(nextValues);
-				}
-			}
-			assert(nextValueTensor.dim() == 2 && nextValueTensor.size(0) == m_batchSize && nextValueTensor.size(1) == 1);
-			Tensor targetTensor = m_rewardTensor + nextValueTensor * m_nextDiscountTensor;
-
-			assert(targetTensor.dim() == 2 && targetTensor.size(0) == m_batchSize && targetTensor.size(1) == 1);
-			Tensor lossTensor;
-			if (m_replayMemory.isPrioritized())
-			{
-				Tensor deltaTensor = targetTensor - valueTensor;
-				assert(deltaTensor.dim() == 2 && deltaTensor.size(0) == m_batchSize && deltaTensor.size(1) == 1);
-				m_replayMemory.updatePriorities(m_sampleIndices, deltaTensor, m_batchSize);
-				Tensor costTensor = torch::nn::functional::mse_loss(valueTensor, targetTensor, torch::nn::functional::MSELossFuncOptions().reduction(torch::kNone)) * m_weightTensor;
-				assert(costTensor.dim() == 2 && costTensor.size(0) == m_batchSize && costTensor.size(1) == 1);
-				lossTensor = torch::mean(costTensor);
-			}
-			else
-			{
-				lossTensor = torch::mean(torch::nn::functional::mse_loss(valueTensor, targetTensor));
-			}
-			assert(lossTensor.dim() == 0 && 1 == lossTensor.numel());
-			m_optimizer.zero_grad();
-			lossTensor.backward();
-			m_optimizer.step();
-			if (m_valueNetUpdateCount % m_targetUpdateFreq == 0)
-			{
-				NN_copyParameters(m_targetNet, m_valueNet);
-			}
-			++m_valueNetUpdateCount;
 		}
 		++m_learnCount;
-	}
 
+		//Tensor stateTensor = m_stateTensor;
+		//Tensor actionTensor = m_actionTensor;
+		//Tensor rewardTensor = m_rewardTensor;
+		//Tensor nextStateTensor = m_nextStateTensor;
+		//Tensor nextDiscountTensor = m_nextDiscountTensor;
+		//Tensor weightTensor = m_weightTensor;
+
+		Tensor stateTensor = MakeTensor<State_t>(torch::kFloat32, batchSize);
+		Tensor actionTensor = MakeTensor<Action_t>(torch::kInt64, batchSize);
+		Tensor rewardTensor = MakeTensor<float>(torch::kFloat32, batchSize);
+		Tensor nextStateTensor = MakeTensor<State_t>(torch::kFloat32, batchSize);
+		Tensor nextDiscountTensor = MakeTensor<float>(torch::kFloat32, batchSize);
+		Tensor weightTensor = MakeTensor<float>(torch::kFloat32, batchSize);
+
+
+		if constexpr (TargetEvaluationMethod::sarsa == t_evaluationMethod)
+		{
+			switch (m_experienceReplay)
+			{
+			case ExperienceReplay::no_experience_replay:
+				m_trajectoryBuffer.pop(stateTensor, actionTensor, rewardTensor, nextStateTensor, nextDiscountTensor, nextActionTensor, batchSize);
+				break;
+			case ExperienceReplay::experience_replay:
+				assert(batchSize == m_batchSize);
+				m_trajectoryBuffer.sample(stateTensor, actionTensor, rewardTensor, nextStateTensor, nextDiscountTensor, nextActionTensor, batchSize);
+				break;
+			case ExperienceReplay::prioritized_experience_replay:
+				assert(batchSize == m_batchSize);
+				m_trajectoryBuffer.sample(m_sampleIndices, stateTensor, actionTensor, rewardTensor, nextStateTensor, nextDiscountTensor, nextActionTensor, weightTensor, batchSize, m_prioritizedBeta);
+				break;
+			default:
+				return;
+			}
+		}
+		else
+		{
+			switch (m_experienceReplay)
+			{
+			case ExperienceReplay::no_experience_replay:
+				m_trajectoryBuffer.pop(stateTensor, actionTensor, rewardTensor, nextStateTensor, nextDiscountTensor, batchSize);
+				break;
+			case ExperienceReplay::experience_replay:
+				assert(batchSize == m_batchSize);
+				m_trajectoryBuffer.sample(stateTensor, actionTensor, rewardTensor, nextStateTensor, nextDiscountTensor, batchSize);
+				break;
+			case ExperienceReplay::prioritized_experience_replay:
+				assert(batchSize == m_batchSize);
+				m_trajectoryBuffer.sample(m_sampleIndices, stateTensor, actionTensor, rewardTensor, nextStateTensor, nextDiscountTensor, weightTensor, batchSize, m_prioritizedBeta);
+				break;
+			default:
+				return;
+			}
+		}
+
+		Tensor valueTensor = m_valueNet->forward(stateTensor).gather(1, actionTensor);
+		assert(valueTensor.dim() == 2 && valueTensor.size(0) == m_batchSize);
+
+		Tensor nextValueTensor;
+		if constexpr (TargetEvaluationMethod::q_learning == t_evaluationMethod)
+		{
+			if (m_doubleDQN)
+			{
+				Tensor maxActionTensor = std::get<1>(m_valueNet->forward(nextStateTensor).max(1, true));
+				nextValueTensor = m_targetNet->forward(nextStateTensor).gather(1, maxActionTensor);
+			}
+			else
+			{
+				nextValueTensor = std::get<0>(m_targetNet->forward(nextStateTensor).max(1, true));
+			}
+		}
+		else if constexpr (TargetEvaluationMethod::sarsa == t_evaluationMethod)
+		{
+			nextValueTensor = m_targetNet->forward(nextStateTensor).gather(1, nextActionTensor);//semi-gradient
+		}
+		else
+		{
+			nextValueTensor = torch::empty({ m_batchSize, 1 }, torch::TensorOptions().dtype(torch::kFloat32));
+			auto nextValueAccessor = nextValueTensor.accessor<float, 2>();
+
+			Tensor nextValuesTensor = m_targetNet->forward(nextStateTensor);
+			assert(nextValuesTensor.dim() == 2 && nextValuesTensor.size(0) == m_batchSize);
+			auto nextValuesAccessor = nextValuesTensor.accessor<float, 2>();
+
+			size_t count = nextValuesTensor.size(1);
+			std::vector<float> nextValues(count);
+			for (size_t i = 0; i < m_batchSize; ++i)
+			{
+				for (size_t j = 0; j < count; ++j)
+				{
+					nextValues[j] = nextValuesAccessor[i][j];
+				}
+				nextValueAccessor[i][0] = m_policy.getExpectedValue(nextValues);
+			}
+		}
+		assert(nextValueTensor.dim() == 2 && nextValueTensor.size(0) == m_batchSize && nextValueTensor.size(1) == 1);
+		Tensor targetTensor = rewardTensor + nextValueTensor * nextDiscountTensor;
+
+		assert(targetTensor.dim() == 2 && targetTensor.size(0) == m_batchSize && targetTensor.size(1) == 1);
+		Tensor lossTensor;
+		if (ExperienceReplay::prioritized_experience_replay == m_experienceReplay)
+		{
+			Tensor deltaTensor = targetTensor - valueTensor;
+			assert(deltaTensor.dim() == 2 && deltaTensor.size(0) == m_batchSize && deltaTensor.size(1) == 1);
+			m_trajectoryBuffer.updatePriorities(m_sampleIndices, deltaTensor, m_batchSize, m_prioritizedAlpha, m_prioritizedEpsilon);
+			Tensor costTensor = torch::nn::functional::mse_loss(valueTensor, targetTensor, torch::nn::functional::MSELossFuncOptions().reduction(torch::kNone)) * m_weightTensor;
+			assert(costTensor.dim() == 2 && costTensor.size(0) == m_batchSize && costTensor.size(1) == 1);
+			lossTensor = torch::mean(costTensor);
+		}
+		else
+		{
+			lossTensor = torch::mean(torch::nn::functional::mse_loss(valueTensor, targetTensor));
+		}
+		assert(lossTensor.dim() == 0 && 1 == lossTensor.numel());
+		m_optimizer->zero_grad();
+		lossTensor.backward();
+		m_optimizer->step();
+		if (m_learnCount % m_targetNetUpdateFreq == 0)
+		{
+			NN_copyParameters(m_targetNet->module(), m_valueNet->module());
+		}
+	}
+protected:
 	template<typename Element_t, typename TensorScalar_t>
-	Tensor MakeTensor(TensorScalar_t dtype)
+	Tensor MakeTensor(TensorScalar_t dtype, uint32_t batchSize)
 	{
 		auto shape = GetShape<Element_t>::shape();
 		std::array<int64_t, GetDimension<Element_t>::dim() + 1> tensorShape;
-		tensorShape[0] = m_batchSize;
+		tensorShape[0] = batchSize;
 		for (size_t i = 0; i < GetDimension<Element_t>::dim(); ++i)
 		{
 			tensorShape[i + 1] = shape[i];
@@ -373,51 +494,87 @@ protected:
 		Tensor tensor = torch::empty(tensorShape, torch::TensorOptions().dtype(dtype));
 		return tensor;
 	}
-
-	//template<typename Array_t, typename TensorAccessor>
 protected:
-	ActionValueNet_t& m_valueNet;
-	Optimizer& m_optimizer;
-	Policy_t& m_policy;
-	ActionValueNet_t m_targetNet;
-	ReplayMemory_t& m_replayMemory;
+	ActionValueNetPtr m_valueNet;
+	OptimizerPtr m_optimizer;
+	PolicyFunctionPtr m_policy;
+	ActionValueNetPtr m_targetNet;
+
 	float m_discountRate;
-	uint32_t m_minReplaySize;
 	uint32_t m_batchSize;
+	uint32_t m_targetNetUpdateFreq;
+	bool m_multiStepCompound;
+	ExperienceReplay m_experienceReplay;
+	uint32_t m_replayMemorySize;
+	uint32_t m_warmUpSize;
 	uint32_t m_learnFreq;
+	float m_prioritizedEpsilon;
+	float m_prioritizedAlpha;
+	float m_prioritizedBeta;
+	uint32_t m_tryLearnCount{};
 	uint32_t m_learnCount{};
-	uint32_t m_targetUpdateFreq;
-	uint32_t m_valueNetUpdateCount{};
+
+	State_t m_state;
+	Action_t m_action;
+	MultiStepBuffer<State_t, Action_t> m_multiStepBuffer;
+	TrajectoryBuffer<State_t, Action_t> m_trajectoryBuffer;
+	std::vector<uint32_t> m_sampleIndices;
+
 	Tensor m_stateTensor;
 	Tensor m_actionTensor;
 	Tensor m_rewardTensor;
 	Tensor m_nextStateTensor;
 	Tensor m_nextDiscountTensor;
 	Tensor m_weightTensor;
-	std::vector<uint32_t> m_sampleIndices;
-protected:
-	State_t m_state;
-	Action_t m_action;
-	MultiStepBuffer<State_t, Action_t> m_multiStepBuffer;
-	bool m_multiStepCompound;
+
+public:
+	static DeepQNetworkPtr Make(ActionValueNetPtr valueNet, OptimizerPtr optimizer, PolicyFunctionPtr policy, const DeepQLearningOptions& options)
+	{
+		return DeepQNetworkPtr::Make(valueNet, optimizer, policy, options);
+	}
 };
 
-template<typename ReplayMemory_t, typename ActionValueNet_t, typename Policy_t = EpsilonGreedy<ActionValueNet_t>>
-inline static DeepQNetwork<TargetEvaluationMethod::q_learning, ReplayMemory_t, ActionValueNet_t, Policy_t> MakeDQN(ReplayMemory_t& replayMemory, ActionValueNet_t& valueNet, Optimizer& optimizer, Policy_t& policy, const DeepQLearningOptions& options)
+
+template<typename ActionValueNet_t, typename PolicyFunction_t>
+inline static paf::SharedPtr<DeepQNetwork<TargetEvaluationMethod::q_learning, ActionValueNet_t, PolicyFunction_t>> MakeDQN(
+	paf::SharedPtr<ActionValueNet_t> valueNet,
+	std::shared_ptr<Optimizer> optimizer,
+	paf::SharedPtr<PolicyFunction_t> policy,
+	const DeepQLearningOptions& options)
 {
-	return DeepQNetwork<TargetEvaluationMethod::q_learning, ReplayMemory_t, ActionValueNet_t, Policy_t>(replayMemory, valueNet, optimizer, policy, options);
+	return paf::SharedPtr<DeepQNetwork<TargetEvaluationMethod::q_learning, ActionValueNet_t, PolicyFunction_t>>::Make(valueNet, optimizer, policy, options);
 }
 
-template<typename ReplayMemory_t, typename ActionValueNet_t, typename Policy_t = EpsilonGreedy<ActionValueNet_t>>
-inline static DeepQNetwork<TargetEvaluationMethod::sarsa, ReplayMemory_t, ActionValueNet_t, Policy_t> MakeDeepSarsa(ReplayMemory_t& replayMemory, ActionValueNet_t& valueNet, Optimizer& optimizer, Policy_t& policy, const DeepSarsaOptions& options)
+template<typename ActionValueNet_t, typename PolicyFunction_t>
+inline static paf::SharedPtr<DeepQNetwork<TargetEvaluationMethod::sarsa, ActionValueNet_t, PolicyFunction_t>> MakeDeepSarsa(
+	paf::SharedPtr<ActionValueNet_t> valueNet,
+	std::shared_ptr<Optimizer> optimizer,
+	paf::SharedPtr<PolicyFunction_t> policy,
+	const DeepQLearningOptions& options)
 {
-	return DeepQNetwork<TargetEvaluationMethod::sarsa, ReplayMemory_t, ActionValueNet_t, Policy_t>(replayMemory, valueNet, optimizer, policy, options);
+	return paf::SharedPtr<DeepQNetwork<TargetEvaluationMethod::sarsa, ActionValueNet_t, PolicyFunction_t>>::Make(valueNet, optimizer, policy, options);
 }
 
-template<typename ReplayMemory_t, typename ActionValueNet_t, typename Policy_t = EpsilonGreedy<ActionValueNet_t>>
-inline static DeepQNetwork<TargetEvaluationMethod::expected_sarsa, ReplayMemory_t, ActionValueNet_t, Policy_t> MakeDeepExpectedSarsa(ReplayMemory_t& replayMemory, ActionValueNet_t& valueNet, Optimizer& optimizer, Policy_t& policy, const DeepExpectedSarsaOptions& options)
+template<typename ActionValueNet_t, typename PolicyFunction_t>
+inline static paf::SharedPtr<DeepQNetwork<TargetEvaluationMethod::expected_sarsa, ActionValueNet_t, PolicyFunction_t>> MakeDeepExpectedSarsa(
+	paf::SharedPtr<ActionValueNet_t> valueNet,
+	std::shared_ptr<Optimizer> optimizer,
+	paf::SharedPtr<PolicyFunction_t> policy,
+	const DeepQLearningOptions& options)
 {
-	return DeepQNetwork<TargetEvaluationMethod::expected_sarsa, ReplayMemory_t, ActionValueNet_t, Policy_t>(replayMemory, valueNet, optimizer, policy, options);
+	return paf::SharedPtr<DeepQNetwork<TargetEvaluationMethod::expected_sarsa, ActionValueNet_t, PolicyFunction_t>>::Make(valueNet, optimizer, policy, options);
 }
+
+//template<typename ReplayMemory_t, typename ActionValueNet_t, typename Policy_t = EpsilonGreedy<ActionValueNet_t>>
+//inline static DeepQNetwork<TargetEvaluationMethod::sarsa, ReplayMemory_t, ActionValueNet_t, Policy_t> MakeDeepSarsa(ReplayMemory_t& replayMemory, ActionValueNet_t& valueNet, Optimizer& optimizer, Policy_t& policy, const DeepSarsaOptions& options)
+//{
+//	return DeepQNetwork<TargetEvaluationMethod::sarsa, ReplayMemory_t, ActionValueNet_t, Policy_t>(replayMemory, valueNet, optimizer, policy, options);
+//}
+//
+//template<typename ReplayMemory_t, typename ActionValueNet_t, typename Policy_t = EpsilonGreedy<ActionValueNet_t>>
+//inline static DeepQNetwork<TargetEvaluationMethod::expected_sarsa, ReplayMemory_t, ActionValueNet_t, Policy_t> MakeDeepExpectedSarsa(ReplayMemory_t& replayMemory, ActionValueNet_t& valueNet, Optimizer& optimizer, Policy_t& policy, const DeepExpectedSarsaOptions& options)
+//{
+//	return DeepQNetwork<TargetEvaluationMethod::expected_sarsa, ReplayMemory_t, ActionValueNet_t, Policy_t>(replayMemory, valueNet, optimizer, policy, options);
+//}
 
 END_RLTL_IMPL

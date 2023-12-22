@@ -129,31 +129,36 @@ public:
 public:
 	using torch::nn::ModuleHolder<MLPActionValueNetImpl>::ModuleHolder;
 public:
-	virtual Action_t maxAction(const State_t& state, bool firstMax = true) const override
+	Action_t maxAction(const State_t& state, bool firstMax = true) override
 	{
 		return NN_actionByArgmax<decltype(*this), State_t, Action_t>(*this, state);
 	}	
 	
-	virtual void getValues(std::vector<float>& values, const State_t& state) const override
+	void getValues(std::vector<float>& values, const State_t& state) override
 	{
 		NN_getStateValues<decltype(*this), State_t>(values, *this, state);
 	}
 
-	virtual uint32_t actionCount() const override
+	uint32_t actionCount() const override
 	{
 		return impl_->actionDim();
 	}
 
-	virtual Tensor forward(const Tensor& stateTensor) override
+	Tensor forward(const Tensor& stateTensor) override
 	{
 		return impl_->forward(stateTensor);
 	}
+
+	Module* module() override
+	{
+		return impl_.get();
+	}
 public:
-	MLPActionValueNetPtr Make(uint32_t stateDim, uint32_t actionDim, uint32_t hiddenDim, size_t numHiddens = 1, bool dueling = true)
+	static MLPActionValueNetPtr Make(uint32_t stateDim, uint32_t actionDim, uint32_t hiddenDim, size_t numHiddens = 1, bool dueling = true)
 	{
 		return MLPActionValueNetPtr::Make(stateDim, actionDim, hiddenDim, numHiddens, dueling);
 	}
-	MLPActionValueNetPtr Make(uint32_t stateDim, uint32_t actionDim, const std::vector<uint32_t>& hiddenDims, bool dueling = true)
+	static MLPActionValueNetPtr Make(uint32_t stateDim, uint32_t actionDim, const std::vector<uint32_t>& hiddenDims, bool dueling = true)
 	{
 		return MLPActionValueNetPtr::Make(stateDim, actionDim, hiddenDims, dueling);
 	}

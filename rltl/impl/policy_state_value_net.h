@@ -146,7 +146,7 @@ protected:
 
 
 template<typename State_t, typename Action_t>
-class MLPPolicyStateValueValueNet : public torch::nn::ModuleHolder<MLPPolicyStateValueValueNetImpl>
+class MLPPolicyStateValueNet : public torch::nn::ModuleHolder<MLPPolicyStateValueValueNetImpl>
 {
 public:
 	typedef State_t State_t;

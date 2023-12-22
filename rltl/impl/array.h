@@ -372,4 +372,10 @@ struct GetShape
 	}
 };
 
+template<typename Element_t, size_t t_size_0>
+inline size_t Vector_dimension(const Array<Element_t, t_size_0>& arg)
+{
+	return t_size_0;
+}
+
 END_RLTL_IMPL

@@ -94,22 +94,42 @@ protected:
 
 
 template<typename State_t, typename Action_t>
-class MLPPolicyNet : public torch::nn::ModuleHolder<MLPPolicyNetImpl>
+class MLPPolicyNet : public PolicyNet<State_t, Action_t>, public torch::nn::ModuleHolder<MLPPolicyNetImpl>
 {
 public:
-	typedef State_t State_t;
-	typedef Action_t Action_t;
-	
+	//typedef State_t State_t;
+	//typedef Action_t Action_t;
+	typedef paf::SharedPtr<MLPPolicyNet> MLPPolicyNetPtr;
 public:
 	using torch::nn::ModuleHolder<MLPPolicyNetImpl>::ModuleHolder;
 public:
-	Action_t takeAction(const State_t& state)
+	Action_t takeAction(const State_t& state) override
 	{
 		return NN_actionBySoftmax<decltype(*this), State_t, Action_t>(*this, state);
 	}
-	uint32_t actionCount() const
+	
+	uint32_t actionCount() const override
 	{
 		return impl_->actionDim();
+	}
+	
+	Tensor forward(const Tensor& stateTensor) override
+	{
+		return impl_->forward(stateTensor);
+	}
+
+	Module* module() override
+	{
+		return impl_.get();
+	}
+public:
+	static MLPPolicyNetPtr Make(uint32_t stateDim, uint32_t actionDim, uint32_t hiddenDim, size_t numHiddens = 1)
+	{
+		return MLPPolicyNetPtr::Make(stateDim, actionDim, hiddenDim, numHiddens);
+	}
+	static MLPPolicyNetPtr Make(uint32_t stateDim, uint32_t actionDim, const std::vector<uint32_t>& hiddenDims)
+	{
+		return MLPPolicyNetPtr::Make(stateDim, actionDim, hiddenDims);
 	}
 };
 

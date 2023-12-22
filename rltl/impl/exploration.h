@@ -20,7 +20,7 @@ public:
 		m_firstMax(firstMax)
 	{}
 public:
-	Action_t takeAction(const State_t& state) const override
+	Action_t takeAction(const State_t& state) override
 	{
 		return m_actionValueFunction->maxAction(state, m_firstMax);
 	}
@@ -73,6 +73,10 @@ public:
 			return m_policy->takeAction(state);
 		}
 	}
+	uint32_t actionCount() const override
+	{
+		return m_actionCount;
+	}
 	//expected sarsa
 	float getExpectedValue(std::vector<float>& actionValues)
 	{
@@ -110,7 +114,7 @@ public:
 	typedef paf::SharedPtr<EpsilonGreedy_t> EpsilonGreedyPtr;
 	typedef paf::SharedPtr<EpsilonGreedyLinearDecay> EpsilonGreedyLinearDecayPtr;
 public:
-	EpsilonGreedyLinearDecayPtr(EpsilonGreedyPtr epsilonGreedy, float startEpsilon, float endEpsilon, uint32_t decaySteps):
+	EpsilonGreedyLinearDecay(EpsilonGreedyPtr epsilonGreedy, float startEpsilon, float endEpsilon, uint32_t decaySteps):
 		m_epsilonGreedy(epsilonGreedy),
 		m_startEpsilon(startEpsilon),
 		m_endEpsilon(endEpsilon),

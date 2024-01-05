@@ -178,20 +178,20 @@ public:
 	//bool popup(Tensor& stateTensor, Tensor& actionTensor, Tensor& rewardTensor, Tensor& nextStateTensor, Tensor& nextDiscountTensor, uint32_t batchSize)
 	//{
 	//	assert(0 < batchSize && batchSize <= m_size);
-	//	auto states = stateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
-	//	auto actions = actionTensor.accessor<int64_t, GetDimension<Action_t>::dim() + 1>();
+	//	auto states = stateTensor.accessor<float, Array_Dimension<State_t>::dim() + 1>();
+	//	auto actions = actionTensor.accessor<int64_t, Array_Dimension<Action_t>::dim() + 1>();
 	//	auto rewards = rewardTensor.accessor<float, 2>();
-	//	auto nextStates = nextStateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
+	//	auto nextStates = nextStateTensor.accessor<float, Array_Dimension<State_t>::dim() + 1>();
 	//	auto nextDiscounts = nextDiscountTensor.accessor<float, 2>();
 	//	for (uint32_t i = 0; i < batchSize; ++i)
 	//	{
 	//		size_t index = (size_t)Random::randint(m_size);
 	//		assert(index < m_size);
-	//		assign(states[i], m_states[index]);
-	//		assign(actions[i], m_actions[index]);
-	//		assign(rewards[i], m_rewards[index]);
-	//		assign(nextStates[i], m_nextStates[index]);
-	//		assign(nextDiscounts[i], m_nextDiscounts[index]);
+	//		Tensor_Assign(states[i], m_states[index]);
+	//		Tensor_Assign(actions[i], m_actions[index]);
+	//		Tensor_Assign(rewards[i], m_rewards[index]);
+	//		Tensor_Assign(nextStates[i], m_nextStates[index]);
+	//		Tensor_Assign(nextDiscounts[i], m_nextDiscounts[index]);
 	//	}
 	//}
 
@@ -199,20 +199,20 @@ public:
 	void sample(Tensor& stateTensor, Tensor& actionTensor, Tensor& rewardTensor, Tensor& nextStateTensor, Tensor& nextDiscountTensor, uint32_t batchSize) const
 	{
 		assert(0 < batchSize && 0 < m_size);
-		auto states = stateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
-		auto actions = actionTensor.accessor<int64_t, GetDimension<Action_t>::dim() + 1>();
+		auto states = stateTensor.accessor<float, Array_Dimension<State_t>::dim() + 1>();
+		auto actions = actionTensor.accessor<int64_t, Array_Dimension<Action_t>::dim() + 1>();
 		auto rewards = rewardTensor.accessor<float, 2>();
-		auto nextStates = nextStateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
+		auto nextStates = nextStateTensor.accessor<float, Array_Dimension<State_t>::dim() + 1>();
 		auto nextDiscounts = nextDiscountTensor.accessor<float, 2>();
 		for (uint32_t i = 0; i < batchSize; ++i)
 		{
 			size_t index = (size_t)Random::randint(m_size);
 			assert(index < m_size);
-			assign(states[i], m_states[index]);
-			assign(actions[i], m_actions[index]);
-			assign(rewards[i], m_rewards[index]);
-			assign(nextStates[i], m_nextStates[index]);
-			assign(nextDiscounts[i], m_nextDiscounts[index]);
+			Tensor_Assign(states[i], m_states[index]);
+			Tensor_Assign(actions[i], m_actions[index]);
+			Tensor_Assign(rewards[i], m_rewards[index]);
+			Tensor_Assign(nextStates[i], m_nextStates[index]);
+			Tensor_Assign(nextDiscounts[i], m_nextDiscounts[index]);
 		}
 	}
 
@@ -220,22 +220,22 @@ public:
 	void sample(Tensor& stateTensor, Tensor& actionTensor, Tensor& rewardTensor, Tensor& nextStateTensor, Tensor& nextDiscountTensor, Tensor& nextActionTensor, uint32_t batchSize) const
 	{
 		assert(0 < batchSize && 0 < m_size);
-		auto states = stateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
-		auto actions = actionTensor.accessor<int64_t, GetDimension<Action_t>::dim() + 1>();
+		auto states = stateTensor.accessor<float, Array_Dimension<State_t>::dim() + 1>();
+		auto actions = actionTensor.accessor<int64_t, Array_Dimension<Action_t>::dim() + 1>();
 		auto rewards = rewardTensor.accessor<float, 2>();
-		auto nextStates = nextStateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
+		auto nextStates = nextStateTensor.accessor<float, Array_Dimension<State_t>::dim() + 1>();
 		auto nextDiscounts = nextDiscountTensor.accessor<float, 2>();
-		auto nextActions = nextActionTensor.accessor<int64_t, GetDimension<Action_t>::dim() + 1>();
+		auto nextActions = nextActionTensor.accessor<int64_t, Array_Dimension<Action_t>::dim() + 1>();
 		for (uint32_t i = 0; i < batchSize; ++i)
 		{
 			size_t index = (size_t)Random::randint(m_size);
 			assert(index < m_size);
-			assign(states[i], m_states[index]);
-			assign(actions[i], m_actions[index]);
-			assign(rewards[i], m_rewards[index]);
-			assign(nextStates[i], m_nextStates[index]);
-			assign(nextDiscounts[i], m_nextDiscounts[index]);
-			assign(nextActions[i], m_nextActions[index]);
+			Tensor_Assign(states[i], m_states[index]);
+			Tensor_Assign(actions[i], m_actions[index]);
+			Tensor_Assign(rewards[i], m_rewards[index]);
+			Tensor_Assign(nextStates[i], m_nextStates[index]);
+			Tensor_Assign(nextDiscounts[i], m_nextDiscounts[index]);
+			Tensor_Assign(nextActions[i], m_nextActions[index]);
 		}
 	}
 
@@ -243,10 +243,10 @@ public:
 	void sample(std::vector<uint32_t>& indices, Tensor& stateTensor, Tensor& actionTensor, Tensor& rewardTensor, Tensor& nextStateTensor, Tensor& nextDiscountTensor, Tensor& weightTensor, uint32_t batchSize) const
 	{
 		assert(0 < batchSize && 0 < m_size);
-		auto states = stateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
-		auto actions = actionTensor.accessor<int64_t, GetDimension<Action_t>::dim() + 1>();
+		auto states = stateTensor.accessor<float, Array_Dimension<State_t>::dim() + 1>();
+		auto actions = actionTensor.accessor<int64_t, Array_Dimension<Action_t>::dim() + 1>();
 		auto rewards = rewardTensor.accessor<float, 2>();
-		auto nextStates = nextStateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
+		auto nextStates = nextStateTensor.accessor<float, Array_Dimension<State_t>::dim() + 1>();
 		auto nextDiscounts = nextDiscountTensor.accessor<float, 2>();
 		auto weights = weightTensor.accessor<float, 2>();
 		for (uint32_t i = 0; i < batchSize; ++i)
@@ -254,11 +254,11 @@ public:
 			size_t index = sampleIndexSumTree();
 			assert(index < m_size);
 			indices[i] = index;
-			assign(states[i], m_states[index]);
-			assign(actions[i], m_actions[index]);
-			assign(rewards[i], m_rewards[index]);
-			assign(nextStates[i], m_nextStates[index]);
-			assign(nextDiscounts[i], m_nextDiscounts[index]);
+			Tensor_Assign(states[i], m_states[index]);
+			Tensor_Assign(actions[i], m_actions[index]);
+			Tensor_Assign(rewards[i], m_rewards[index]);
+			Tensor_Assign(nextStates[i], m_nextStates[index]);
+			Tensor_Assign(nextDiscounts[i], m_nextDiscounts[index]);
 			weights[i][0] = std::pow(m_minPriority / m_priorities[index], m_prioritizedBeta);
 		}
 	}
@@ -266,24 +266,24 @@ public:
 	void sample(std::vector<uint32_t>& indices, Tensor& stateTensor, Tensor& actionTensor, Tensor& rewardTensor, Tensor& nextStateTensor, Tensor& nextDiscountTensor, Tensor& nextActionTensor, Tensor& weightTensor, uint32_t batchSize) const
 	{
 		assert(0 < batchSize && 0 < m_size);
-		auto states = stateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
-		auto actions = actionTensor.accessor<int64_t, GetDimension<Action_t>::dim() + 1>();
+		auto states = stateTensor.accessor<float, Array_Dimension<State_t>::dim() + 1>();
+		auto actions = actionTensor.accessor<int64_t, Array_Dimension<Action_t>::dim() + 1>();
 		auto rewards = rewardTensor.accessor<float, 2>();
-		auto nextStates = nextStateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
+		auto nextStates = nextStateTensor.accessor<float, Array_Dimension<State_t>::dim() + 1>();
 		auto nextDiscounts = nextDiscountTensor.accessor<float, 2>();
-		auto nextActions = nextActionTensor.accessor<int64_t, GetDimension<Action_t>::dim() + 1>();
+		auto nextActions = nextActionTensor.accessor<int64_t, Array_Dimension<Action_t>::dim() + 1>();
 		auto weights = weightTensor.accessor<float, 2>();
 		for (uint32_t i = 0; i < batchSize; ++i)
 		{
 			size_t index = sampleIndexSumTree();
 			assert(index < m_size);
 			indices[i] = index;
-			assign(states[i], m_states[index]);
-			assign(actions[i], m_actions[index]);
-			assign(rewards[i], m_rewards[index]);
-			assign(nextStates[i], m_nextStates[index]);
-			assign(nextDiscounts[i], m_nextDiscounts[index]);
-			assign(nextActions[i], m_nextActions[index]);
+			Tensor_Assign(states[i], m_states[index]);
+			Tensor_Assign(actions[i], m_actions[index]);
+			Tensor_Assign(rewards[i], m_rewards[index]);
+			Tensor_Assign(nextStates[i], m_nextStates[index]);
+			Tensor_Assign(nextDiscounts[i], m_nextDiscounts[index]);
+			Tensor_Assign(nextActions[i], m_nextActions[index]);
 			weights[i][0] = std::pow(m_minPriority / m_priorities[index], m_prioritizedBeta);
 		}
 	}
@@ -305,10 +305,7 @@ protected:
 	void updatePriority(size_t index, float priority)
 	{
 		m_priorities[index] = priority;
-		if (m_prioritySums)
-		{
-			updateSumTree(index);
-		}
+		updateSumTree(index);
 		if (m_minPriority > priority)
 		{
 			m_minPriority = priority;

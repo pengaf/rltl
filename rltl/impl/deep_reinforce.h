@@ -62,8 +62,8 @@ public:
 		Tensor stateTensor = MakeTensor<State_t>(torch::kFloat32, batchSize);
 		Tensor actionTensor = MakeTensor<Action_t>(torch::kInt64, batchSize);
 		Tensor returnTensor = MakeTensor<float>(torch::kFloat32, batchSize);
-		auto states = stateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
-		auto actions = actionTensor.accessor<int64_t, GetDimension<Action_t>::dim() + 1>();
+		auto states = stateTensor.accessor<float, Array_Dimension<State_t>::dim() + 1>();
+		auto actions = actionTensor.accessor<int64_t, Array_Dimension<Action_t>::dim() + 1>();
 		auto returns = returnTensor.accessor<float, 2>();
 
 		float g = 0;
@@ -72,8 +72,8 @@ public:
 			size_t index = batchSize - 1 - i;
 			g = g * m_discountRate + m_rewards[index];
 			returns[index][0] = -g;
-			assign(states[index], m_states[index]);
-			assign(actions[index], m_actions[index]);
+			Tensor_Assign(states[index], m_states[index]);
+			Tensor_Assign(actions[index], m_actions[index]);
 		}
 
 		Tensor logProbTensor = torch::nn::functional::log_softmax(m_policyNet->forward(stateTensor), 1);
@@ -88,8 +88,8 @@ public:
 		//Tensor stateTensor = MakeTensor<State_t>(torch::kFloat32, 1);
 		//Tensor actionTensor = MakeTensor<Action_t>(torch::kInt64, 1);
 		//Tensor returnTensor = MakeTensor<float>(torch::kFloat32, 1);
-		//auto states = stateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
-		//auto actions = actionTensor.accessor<int64_t, GetDimension<Action_t>::dim() + 1>();
+		//auto states = stateTensor.accessor<float, Array_Dimension<State_t>::dim() + 1>();
+		//auto actions = actionTensor.accessor<int64_t, Array_Dimension<Action_t>::dim() + 1>();
 
 		//float g = 0;
 		//uint32_t batchSize = m_states.size();
@@ -99,8 +99,8 @@ public:
 		//	size_t index = batchSize - 1 - i;
 		//	g = g * m_discountRate + m_rewards[index];
 		//	
-		//	assign(states[0], m_states[index]);
-		//	assign(actions[0], m_actions[index]);
+		//	Tensor_Assign(states[0], m_states[index]);
+		//	Tensor_Assign(actions[0], m_actions[index]);
 
 		//	Tensor logProbTensor = torch::nn::functional::log_softmax(m_policyNet->forward(stateTensor), 1);
 		//	Tensor lossTensor = logProbTensor.gather(1, actionTensor) * -g;
@@ -117,10 +117,10 @@ protected:
 	template<typename Element_t, typename TensorScalar_t>
 	Tensor MakeTensor(TensorScalar_t dtype, uint32_t batchSize)
 	{
-		auto shape = GetShape<Element_t>::shape();
-		std::array<int64_t, GetDimension<Element_t>::dim() + 1> tensorShape;
+		auto shape = Array_Shape<Element_t>::shape();
+		std::array<int64_t, Array_Dimension<Element_t>::dim() + 1> tensorShape;
 		tensorShape[0] = batchSize;
-		for (size_t i = 0; i < GetDimension<Element_t>::dim(); ++i)
+		for (size_t i = 0; i < Array_Dimension<Element_t>::dim(); ++i)
 		{
 			tensorShape[i + 1] = shape[i];
 		}

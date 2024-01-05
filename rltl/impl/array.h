@@ -338,7 +338,19 @@ public:
 
 
 template<typename T>
-struct GetDimension
+struct Array_ElementType
+{
+	typedef T Element_t;
+};
+
+template<typename Element_t, size_t t_size_0, size_t... t_sizes>
+struct Array_ElementType<Array<Element_t, t_size_0, t_sizes...>>
+{
+	typedef Element_t Element_t;
+};
+
+template<typename T>
+struct Array_Dimension
 {
 	//static const size_t t_dim = std::is_arithmetic_v<T> ? 1 : T::t_dim;
 	constexpr static size_t dim()
@@ -355,9 +367,9 @@ struct GetDimension
 };
 
 template<typename T>
-struct GetShape
+struct Array_Shape
 {
-	static Array<size_t, GetDimension<T>::dim()> shape()
+	static Array<size_t, Array_Dimension<T>::dim()> shape()
 	{
 		if constexpr (std::is_arithmetic_v<T>)
 		{

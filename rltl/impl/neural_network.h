@@ -2,7 +2,7 @@
 #include "utility.h"
 #include "array.h"
 #include "random.h"
-
+#include <string>
 BEGIN_RLTL_IMPL
 
 
@@ -160,44 +160,44 @@ struct TensorAccessorToArray<T, N, Element_t, t_size_0, t_size_1, t_sizes...>
 };
 
 template<typename T, size_t N, typename Element_t, size_t... t_sizes>
-inline void assign(torch::TensorAccessor<T, N>& tensorAccessor, ArrayConstView<Element_t, t_sizes...> arrayView)
+inline void Tensor_Assign(torch::TensorAccessor<T, N>& tensorAccessor, ArrayConstView<Element_t, t_sizes...> arrayView)
 {
 	ArrayConstViewToTensorAccessor<T, N, Element_t, t_sizes...>(tensorAccessor, arrayView);
 }
 
 template<typename T, size_t N, typename Element_t, size_t... t_sizes>
-inline void assign(torch::TensorAccessor<T, N>& tensorAccessor, ArrayView<Element_t, t_sizes...> arrayView)
+inline void Tensor_Assign(torch::TensorAccessor<T, N>& tensorAccessor, ArrayView<Element_t, t_sizes...> arrayView)
 {
 	ArrayViewToTensorAccessor<T, N, Element_t, t_sizes...>(tensorAccessor, arrayView);
 }
 
 template<typename T, size_t N, typename Element_t, size_t... t_sizes>
-inline void assign(torch::TensorAccessor<T, N>& tensorAccessor, const Array<Element_t, t_sizes...>& array)
+inline void Tensor_Assign(torch::TensorAccessor<T, N>& tensorAccessor, const Array<Element_t, t_sizes...>& array)
 {
 	ArrayToTensorAccessor<T, N, Element_t, t_sizes...>(tensorAccessor, array);
 }
 
 template<typename T>//, typename Element_t>
-inline void assign(torch::TensorAccessor<T, 1>& tensorAccessor, float value)
+inline void Tensor_Assign(torch::TensorAccessor<T, 1>& tensorAccessor, float value)
 {
 	assert(tensorAccessor.size(0) == 1);
 	tensorAccessor[0] = value;
 }
 
 template<typename T, size_t N, typename Element_t, size_t... t_sizes>
-inline void assign(ArrayView<Element_t, t_sizes...> arrayView, const torch::TensorAccessor<T, N>& tensorAccessor)
+inline void Tensor_Assign(ArrayView<Element_t, t_sizes...> arrayView, const torch::TensorAccessor<T, N>& tensorAccessor)
 {
 	TensorAccessorToArrayView<T, N, Element_t, t_sizes...>(arrayView, tensorAccessor);
 }
 
 template<typename T, size_t N, typename Element_t, size_t... t_sizes>
-inline void assign(Array<Element_t, t_sizes...>& array, const torch::TensorAccessor<T, N>& tensorAccessor)
+inline void Tensor_Assign(Array<Element_t, t_sizes...>& array, const torch::TensorAccessor<T, N>& tensorAccessor)
 {
 	TensorAccessorToArray<T, N, Element_t, t_sizes...>(array, tensorAccessor);
 }
 
 template<typename T, typename Element_t>
-inline void assign(Element_t& value, const torch::TensorAccessor<T, 1>& tensorAccessor)
+inline void Tensor_Assign(Element_t& value, const torch::TensorAccessor<T, 1>& tensorAccessor)
 {
 	assert(tensorAccessor.size(0) == 1);
 	value = tensorAccessor[0];
@@ -206,10 +206,10 @@ inline void assign(Element_t& value, const torch::TensorAccessor<T, 1>& tensorAc
 template<typename Element_t, typename TensorScalar_t>
 Tensor NN_makeTensor(TensorScalar_t dtype, uint32_t batchSize)
 {
-	auto shape = GetShape<Element_t>::shape();
-	std::array<int64_t, GetDimension<Element_t>::dim() + 1> tensorShape;
+	auto shape = Array_Shape<Element_t>::shape();
+	std::array<int64_t, Array_Dimension<Element_t>::dim() + 1> tensorShape;
 	tensorShape[0] = batchSize;
-	for (size_t i = 0; i < GetDimension<Element_t>::dim(); ++i)
+	for (size_t i = 0; i < Array_Dimension<Element_t>::dim(); ++i)
 	{
 		tensorShape[i + 1] = shape[i];
 	}
@@ -220,36 +220,36 @@ Tensor NN_makeTensor(TensorScalar_t dtype, uint32_t batchSize)
 template<typename Network_t, typename State_t>
 inline float NN_getStateValue(Network_t& network, const State_t& state)
 {
-	auto shape = GetShape<State_t>::shape();
-	std::array<int64_t, GetDimension<State_t>::dim() + 1> tensorShape;
+	auto shape = Array_Shape<State_t>::shape();
+	std::array<int64_t, Array_Dimension<State_t>::dim() + 1> tensorShape;
 	tensorShape[0] = 1;
 	for (size_t i = 0; i < State_t::t_dim; ++i)
 	{
 		tensorShape[i + 1] = shape[i];
 	}
 	torch::Tensor stateTensor = torch::empty(tensorShape, torch::TensorOptions().dtype(torch::kFloat32));
-	auto stateAccessor = stateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
-	assign(stateAccessor[0], state);
+	auto stateAccessor = stateTensor.accessor<float, Array_Dimension<State_t>::dim() + 1>();
+	Tensor_Assign(stateAccessor[0], state);
 	torch::Tensor valueTensor = network->forward(stateTensor);
 	auto valueAccessor = valueTensor.accessor<int64_t, 2>();
 	float value;
-	assign(value, valueAccessor[0]);
+	Tensor_Assign(value, valueAccessor[0]);
 	return value;
 }
 
 template<typename Network_t, typename State_t>
 inline void NN_getStateValues(std::vector<float>& values, Network_t& network, const State_t& state)
 {
-	auto shape = GetShape<State_t>::shape();
-	std::array<int64_t, GetDimension<State_t>::dim() + 1> tensorShape;
+	auto shape = Array_Shape<State_t>::shape();
+	std::array<int64_t, Array_Dimension<State_t>::dim() + 1> tensorShape;
 	tensorShape[0] = 1;
 	for (size_t i = 0; i < State_t::t_dim; ++i)
 	{
 		tensorShape[i + 1] = shape[i];
 	}
 	torch::Tensor stateTensor = torch::empty(tensorShape, torch::TensorOptions().dtype(torch::kFloat32));
-	auto stateAccessor = stateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
-	assign(stateAccessor[0], state);
+	auto stateAccessor = stateTensor.accessor<float, Array_Dimension<State_t>::dim() + 1>();
+	Tensor_Assign(stateAccessor[0], state);
 	torch::Tensor valueTensor = network->forward(stateTensor);
 	auto valueAccessor = valueTensor.accessor<int64_t, 2>();	
 	size_t count = valueTensor.size(1);
@@ -263,38 +263,38 @@ inline void NN_getStateValues(std::vector<float>& values, Network_t& network, co
 template<typename Network_t, typename State_t, typename Action_t>
 inline Action_t NN_actionByArgmax(Network_t& network, const State_t& state)
 {
-	assert(GetDimension<Action_t>::dim() == 1);
-	auto shape = GetShape<State_t>::shape();
-	std::array<int64_t, GetDimension<State_t>::dim() + 1> tensorShape;
+	assert(Array_Dimension<Action_t>::dim() == 1);
+	auto shape = Array_Shape<State_t>::shape();
+	std::array<int64_t, Array_Dimension<State_t>::dim() + 1> tensorShape;
 	tensorShape[0] = 1;
 	for (size_t i = 0; i < State_t::t_dim; ++i)
 	{
 		tensorShape[i + 1] = shape[i];
 	}
 	torch::Tensor stateTensor = torch::empty(tensorShape, torch::TensorOptions().dtype(torch::kFloat32));
-	auto stateAccessor = stateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
-	assign(stateAccessor[0], state);
+	auto stateAccessor = stateTensor.accessor<float, Array_Dimension<State_t>::dim() + 1>();
+	Tensor_Assign(stateAccessor[0], state);
 	torch::Tensor actionTensor = network->actionValue(stateTensor).argmax(1);
-	auto actionAccessor = actionTensor.accessor<int64_t, GetDimension<Action_t>::dim()>();
+	auto actionAccessor = actionTensor.accessor<int64_t, Array_Dimension<Action_t>::dim()>();
 	Action_t action;
-	assign(action, actionAccessor);
+	Tensor_Assign(action, actionAccessor);
 	return action;
 }
 
 template<typename Network_t, typename State_t, typename Action_t>
 inline Action_t NN_actionBySoftmax(Network_t& network, const State_t& state)
 {
-	assert(GetDimension<Action_t>::dim() == 1);
-	auto shape = GetShape<State_t>::shape();
-	std::array<int64_t, GetDimension<State_t>::dim() + 1> tensorShape;
+	assert(Array_Dimension<Action_t>::dim() == 1);
+	auto shape = Array_Shape<State_t>::shape();
+	std::array<int64_t, Array_Dimension<State_t>::dim() + 1> tensorShape;
 	tensorShape[0] = 1;
 	for (size_t i = 0; i < State_t::t_dim; ++i)
 	{
 		tensorShape[i + 1] = shape[i];
 	}
 	torch::Tensor stateTensor = torch::empty(tensorShape, torch::TensorOptions().dtype(torch::kFloat32));
-	auto stateAccessor = stateTensor.accessor<float, GetDimension<State_t>::dim() + 1>();
-	assign(stateAccessor[0], state);
+	auto stateAccessor = stateTensor.accessor<float, Array_Dimension<State_t>::dim() + 1>();
+	Tensor_Assign(stateAccessor[0], state);
 	torch::Tensor probTensor = torch::nn::functional::softmax(network->logitAction(stateTensor), 1);
 	size_t probSize = probTensor.size(1);
 
@@ -325,6 +325,20 @@ inline void NN_copyParameters(torch::nn::Module* dst, const torch::nn::Module* s
 	outputArchive.save_to(stream);
 	inputArchive.load_from(stream);
 	dst->load(inputArchive);
+}
+
+inline void NN_saveModule(torch::nn::Module* module, const std::string& filename)
+{
+	torch::serialize::OutputArchive outputArchive(std::make_shared<torch::jit::CompilationUnit>());
+	module->save(outputArchive);
+	outputArchive.save_to(filename);
+}
+
+inline void NN_loadModule(torch::nn::Module* module, const std::string& filename)
+{
+	torch::serialize::InputArchive inputArchive;
+	inputArchive.load_from(filename);
+	module->load(inputArchive);
 }
 
 template<typename Net_t>

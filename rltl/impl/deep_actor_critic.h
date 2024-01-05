@@ -310,10 +310,10 @@ protected:
 	template<typename Element_t, typename TensorScalar_t>
 	Tensor MakeTensor(TensorScalar_t dtype, uint32_t batchSize)
 	{
-		auto shape = GetShape<Element_t>::shape();
-		std::array<int64_t, GetDimension<Element_t>::dim() + 1> tensorShape;
+		auto shape = Array_Shape<Element_t>::shape();
+		std::array<int64_t, Array_Dimension<Element_t>::dim() + 1> tensorShape;
 		tensorShape[0] = batchSize;
-		for (size_t i = 0; i < GetDimension<Element_t>::dim(); ++i)
+		for (size_t i = 0; i < Array_Dimension<Element_t>::dim(); ++i)
 		{
 			tensorShape[i + 1] = shape[i];
 		}

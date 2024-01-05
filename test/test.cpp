@@ -142,7 +142,7 @@ public:
 //	rltl::impl::train(env, agent, 5000, &callback);
 //}
 
-void test_dqn()
+void test_dqn(const std::string& filename)
 {
 	//rltl::impl::Callback* stepCallback = new TestStepCallback;
 	typedef MountainCar Env;
@@ -156,6 +156,16 @@ void test_dqn()
 	typedef rltl::impl::MLPActionValueNet<Env::State_t, Env::Action_t> ActionValueNet;
 
 	auto actionValueNet = rltl::impl::MLPActionValueNet<Env::State_t, Env::Action_t>::Make(rltl::impl::Vector_dimension(stateSpacePtr->low()), actionSpacePtr->count(), 128, 1, false);
+
+	try
+	{
+		rltl::impl::NN_loadModule(actionValueNet->module(), filename);
+	}
+	catch (const std::exception& e)
+	{
+		std::cout << e.what();
+	}
+
 
 	std::shared_ptr<torch::optim::AdamW> optimizer(new torch::optim::AdamW((*actionValueNet)->parameters(), torch::optim::AdamWOptions(1e-3)));
 
@@ -173,13 +183,16 @@ void test_dqn()
 
 	//rltl::impl::ReplayMemory<Env::State_t, Env::Action_t> replayMemory(rltl::impl::ReplayMemoryOptions(10000, 1.0, 0.5));
 	auto agent = rltl::impl::MakeDQN(actionValueNet, optimizer, epsilonGreedy, options);
-	uint32_t numEpisodes = 1000;
+	uint32_t numEpisodes = 500;
 	RewardStat2 rewardStat(numEpisodes);
 	rltl::impl::Trainer<Env::State_t, Env::Action_t>::TrainEpisodes(agent.get(), env.get(), numEpisodes, &rewardStat);
 
 	//rltl::impl::DecayEpsilonCallBack<decltype(epsilonGreedy)> decayEpsilon(epsilonGreedy, 1.0f, 0.1f, 100, 0);
 	//rltl::impl::CompositeCallBack<RewardStat2, decltype(decayEpsilon)> callback(rewardStat, decayEpsilon);
 	//rltl::impl::train(env, agent, numEpisodes, &rewardStat);
+	rltl::impl::NN_saveModule(actionValueNet->module(), filename);
+
+
 }
 
 //void test_deep_sarsa()
@@ -292,7 +305,7 @@ int main()
 	//test_table();
 	try
 	{
-		test_dqn();
+		test_dqn("./bb.pth");
 		//test_actor_critic();
 	}
 	catch (const std::exception& e)

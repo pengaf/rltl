@@ -4,10 +4,10 @@
 
 BEGIN_RLTL_IMPL
 
-struct MLPPolicyStateValueValueNetImpl : torch::nn::Module
+struct MLPPolicyStateValueNetImpl : torch::nn::Module
 {
 public:
-	MLPPolicyStateValueValueNetImpl(
+	MLPPolicyStateValueNetImpl(
 		uint32_t stateDim, 
 		uint32_t actionDim, 
 		uint32_t hiddenDim, 
@@ -24,7 +24,7 @@ public:
 		construct(stateDim, actionDim, sharedHiddenDims, actionHiddenDims, stateValueHiddenDims);
 	}
 
-	MLPPolicyStateValueValueNetImpl(
+	MLPPolicyStateValueNetImpl(
 		uint32_t stateDim, 
 		uint32_t actionDim, 
 		const std::vector<uint32_t>& sharedHiddenDims, 
@@ -34,7 +34,7 @@ public:
 		construct(stateDim, actionDim, sharedHiddenDims, actionHiddenDims, stateValueHiddenDims);
 	}
 
-	MLPPolicyStateValueValueNetImpl(const MLPPolicyStateValueValueNetImpl& other)
+	MLPPolicyStateValueNetImpl(const MLPPolicyStateValueNetImpl& other)
 	{
 		construct(other.m_stateDim, other.m_actionDim, other.m_sharedHiddenDims, other.m_actionHiddenDims, other.m_stateValueHiddenDims);
 	}
@@ -146,13 +146,13 @@ protected:
 
 
 template<typename State_t, typename Action_t>
-class MLPPolicyStateValueNet : public torch::nn::ModuleHolder<MLPPolicyStateValueValueNetImpl>
+class MLPPolicyStateValueNet : public torch::nn::ModuleHolder<MLPPolicyStateValueNetImpl>
 {
 public:
 	typedef State_t State_t;
 	typedef Action_t Action_t;
 public:
-	using torch::nn::ModuleHolder<MLPPolicyStateValueValueNetImpl>::ModuleHolder;
+	using torch::nn::ModuleHolder<MLPPolicyStateValueNetImpl>::ModuleHolder;
 public:
 	Action_t takeAction(const StateValue_t& stateValue)
 	{

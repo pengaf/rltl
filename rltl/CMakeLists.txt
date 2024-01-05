@@ -46,6 +46,7 @@ set(impl
 "impl/policy_state_value_net.h"
 "impl/q_learning.h"
 "impl/random.h"
+"impl/replay_buffer.h"
 "impl/replay_memory.h"
 "impl/sarsa.h"
 "impl/space_transform.h"

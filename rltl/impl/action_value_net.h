@@ -26,6 +26,7 @@ public:
 
 	torch::Tensor forward(torch::Tensor x)
 	{
+		x = x.to(m_device);
 		assert(m_linears.size() == (m_hiddenDims.size() + 1 + (m_dueling ? 1 : 0)));
 		size_t numHiddens = m_hiddenDims.size();
 		for (size_t i = 0; i < numHiddens; ++i)
@@ -49,7 +50,7 @@ public:
 	torch::Tensor actionValue(torch::Tensor x)
 	{
 		torch::NoGradGuard nograd;
-		return forward(x);
+		return forward(x).to(torch::Device(torch::DeviceType::CPU));
 	}
 
 	void print()
@@ -109,12 +110,23 @@ public:
 	{
 		return m_dueling;
 	}
+public:
+	torch::Device device() const
+	{
+		return m_device;
+	}
+	void device(torch::Device device)
+	{
+		m_device = device;
+		this->to(device);
+	}
 protected:
 	std::vector<torch::nn::Linear> m_linears;
 	uint32_t m_stateDim;
 	uint32_t m_actionDim;
 	std::vector<uint32_t> m_hiddenDims;
 	bool m_dueling;
+	torch::Device m_device{torch::DeviceType::CPU};
 };
 
 //TORCH_MODULE(MLPQNet);

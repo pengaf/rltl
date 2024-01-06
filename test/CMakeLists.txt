@@ -31,6 +31,7 @@ add_executable(${ProjectName} ${AllFiles})
 
 #add_library(${ProjectName} SHARED ${AllFiles})
 set(libpostfix $<$<CONFIG:Debug>:_d>)
+#set(libpath $<$<CONFIG:Debug>:_d>)
 
 target_link_libraries(${ProjectName} "${TORCH_LIBRARIES}")
 target_link_libraries(${ProjectName} "G:/pengaf/paf/bin/Release/pafcore${libpostfix}.lib")

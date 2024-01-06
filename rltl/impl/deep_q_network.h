@@ -174,7 +174,8 @@ public:
 		m_prioritizedAlpha(options.prioritizedAlpha()),
 		m_prioritizedBeta(options.prioritizedBeta())
 	{
-		m_targetNet = ActionValueNetPtr::Make(*valueNet.get()->get());
+		m_targetNet = ActionValueNetPtr::Make(*valueNet->get());
+		m_targetNet->get()->device(m_valueNet->get()->device());
 		uint32_t multiStep = options.multiStep();
 		if (multiStep > 1)
 		{
@@ -186,7 +187,7 @@ public:
 		}
 		if (useTargetNet())
 		{
-			NN_copyParameters(m_targetNet.get()->get(), m_valueNet.get()->get());
+			NN_copyParameters(m_targetNet->get(), m_valueNet->get());
 		}
 		uint32_t bufferCapacity;
 		if (ExperienceReplay::no_experience_replay == m_experienceReplay)
@@ -412,6 +413,14 @@ protected:
 				return;
 			}
 		}
+
+		torch::Device device = m_valueNet->get()->device();
+		stateTensor = stateTensor.to(device);
+		actionTensor = actionTensor.to(device);
+		rewardTensor = rewardTensor.to(device);
+		nextStateTensor = nextStateTensor.to(device);
+		nextDiscountTensor = nextDiscountTensor.to(device);
+		weightTensor = weightTensor.to(device);
 
 		Tensor valueTensor = m_valueNet->forward(stateTensor).gather(1, actionTensor);
 		assert(valueTensor.dim() == 2 && valueTensor.size(0) == m_batchSize);

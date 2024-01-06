@@ -144,6 +144,7 @@ public:
 
 void test_dqn(const std::string& filename)
 {
+	torch::Device device(torch::DeviceType::CUDA);
 	//rltl::impl::Callback* stepCallback = new TestStepCallback;
 	typedef MountainCar Env;
 	//typedef CartPole Env;
@@ -157,16 +158,16 @@ void test_dqn(const std::string& filename)
 
 	auto actionValueNet = rltl::impl::MLPActionValueNet<Env::State_t, Env::Action_t>::Make(rltl::impl::Vector_dimension(stateSpacePtr->low()), actionSpacePtr->count(), 128, 1, false);
 
-	try
-	{
-		rltl::impl::NN_loadModule(actionValueNet->module(), filename);
-	}
-	catch (const std::exception& e)
-	{
-		std::cout << e.what();
-	}
+	//try
+	//{
+	//	rltl::impl::NN_loadModule(actionValueNet->module(), filename);
+	//}
+	//catch (const std::exception& e)
+	//{
+	//	std::cout << e.what();
+	//}
 
-
+	actionValueNet->get()->device(device);
 	std::shared_ptr<torch::optim::AdamW> optimizer(new torch::optim::AdamW((*actionValueNet)->parameters(), torch::optim::AdamWOptions(1e-3)));
 
 	auto greedyAction = rltl::impl::GreedyAction<Env::State_t, Env::Action_t>::Make(actionValueNet);
@@ -183,7 +184,7 @@ void test_dqn(const std::string& filename)
 
 	//rltl::impl::ReplayMemory<Env::State_t, Env::Action_t> replayMemory(rltl::impl::ReplayMemoryOptions(10000, 1.0, 0.5));
 	auto agent = rltl::impl::MakeDQN(actionValueNet, optimizer, epsilonGreedy, options);
-	uint32_t numEpisodes = 500;
+	uint32_t numEpisodes = 1500;
 	RewardStat2 rewardStat(numEpisodes);
 	rltl::impl::Trainer<Env::State_t, Env::Action_t>::TrainEpisodes(agent.get(), env.get(), numEpisodes, &rewardStat);
 
@@ -312,6 +313,8 @@ int main()
 	{
 		std::cout << e.what();
 	}
+	//test_dqn("./bb.pth");
+
 	//test_deep_expected_sarsa();
 }
 

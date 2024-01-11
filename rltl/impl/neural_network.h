@@ -3,6 +3,7 @@
 #include "array.h"
 #include "random.h"
 #include <string>
+
 BEGIN_RLTL_IMPL
 
 
@@ -11,7 +12,7 @@ struct ArrayConstViewToTensorAccessor
 {
 	typedef torch::TensorAccessor<T, N> TensorAccessor_t;
 	typedef ArrayConstView<Element_t, t_size_0, t_sizes...> ArrayConstView_t;
-	ArrayConstViewToTensorAccessor(TensorAccessor_t& tensorAccessor, ArrayConstView_t arrayView)
+	ArrayConstViewToTensorAccessor(TensorAccessor_t tensorAccessor, ArrayConstView_t arrayView)
 	{
 		assert(tensorAccessor.size(0) == t_size_0);
 		for (size_t i = 0; i < t_size_0; ++i)
@@ -26,7 +27,7 @@ struct ArrayConstViewToTensorAccessor<T, N, Element_t, t_size_0, t_size_1, t_siz
 {
 	typedef torch::TensorAccessor<T, N> TensorAccessor_t;
 	typedef ArrayConstView<Element_t, t_size_0, t_size_1, t_sizes...> ArrayConstView_t;
-	ArrayConstViewToTensorAccessor(TensorAccessor_t& tensorAccessor, ArrayConstView_t arrayView)
+	ArrayConstViewToTensorAccessor(TensorAccessor_t tensorAccessor, ArrayConstView_t arrayView)
 	{
 		assert(tensorAccessor.size(0) == t_size_0);
 		for (size_t i = 0; i < t_size_0; ++i)
@@ -42,7 +43,7 @@ struct ArrayViewToTensorAccessor
 {
 	typedef torch::TensorAccessor<T, N> TensorAccessor_t;
 	typedef ArrayView<Element_t, t_size_0, t_sizes...> ArrayView_t;
-	ArrayViewToTensorAccessor(TensorAccessor_t& tensorAccessor, ArrayView_t arrayView)
+	ArrayViewToTensorAccessor(TensorAccessor_t tensorAccessor, ArrayView_t arrayView)
 	{
 		assert(tensorAccessor.size(0) == t_size_0);
 		for (size_t i = 0; i < t_size_0; ++i)
@@ -57,7 +58,7 @@ struct ArrayViewToTensorAccessor<T, N, Element_t, t_size_0, t_size_1, t_sizes...
 {
 	typedef torch::TensorAccessor<T, N> TensorAccessor_t;
 	typedef ArrayView<Element_t, t_size_0, t_size_1, t_sizes...> ArrayView_t;
-	ArrayViewToTensorAccessor(TensorAccessor_t& tensorAccessor, ArrayView_t arrayView)
+	ArrayViewToTensorAccessor(TensorAccessor_t tensorAccessor, ArrayView_t arrayView)
 	{
 		assert(tensorAccessor.size(0) == t_size_0);
 		for (size_t i = 0; i < t_size_0; ++i)
@@ -73,7 +74,7 @@ struct ArrayToTensorAccessor
 {
 	typedef torch::TensorAccessor<T, N> TensorAccessor_t;
 	typedef Array<Element_t, t_size_0, t_sizes...> Array_t;
-	ArrayToTensorAccessor(TensorAccessor_t& tensorAccessor, const Array_t& array)
+	ArrayToTensorAccessor(TensorAccessor_t tensorAccessor, const Array_t& array)
 	{
 		assert(tensorAccessor.size(0) == t_size_0);
 		for (size_t i = 0; i < t_size_0; ++i)
@@ -88,7 +89,7 @@ struct ArrayToTensorAccessor<T, N, Element_t, t_size_0, t_size_1, t_sizes...>
 {
 	typedef torch::TensorAccessor<T, N> TensorAccessor_t;
 	typedef Array<Element_t, t_size_0, t_size_1, t_sizes...> Array_t;
-	ArrayToTensorAccessor(TensorAccessor_t& tensorAccessor, const Array_t& array)
+	ArrayToTensorAccessor(TensorAccessor_t tensorAccessor, const Array_t& array)
 	{
 		assert(tensorAccessor.size(0) == t_size_0);
 		for (size_t i = 0; i < t_size_0; ++i)
@@ -104,7 +105,7 @@ struct TensorAccessorToArrayView
 {
 	typedef torch::TensorAccessor<T, N> TensorAccessor_t;
 	typedef ArrayView<Element_t, t_size_0, t_sizes...> ArrayView_t;
-	TensorAccessorToArrayView(ArrayView_t arrayView, const TensorAccessor_t& tensorAccessor)
+	TensorAccessorToArrayView(ArrayView_t arrayView, TensorAccessor_t tensorAccessor)
 	{
 		assert(tensorAccessor.size(0) == t_size_0);
 		for (size_t i = 0; i < t_size_0; ++i)
@@ -119,7 +120,7 @@ struct TensorAccessorToArrayView<T, N, Element_t, t_size_0, t_size_1, t_sizes...
 {
 	typedef torch::TensorAccessor<T, N> TensorAccessor_t;
 	typedef ArrayView<Element_t, t_size_0, t_size_1, t_sizes...> ArrayView_t;
-	TensorAccessorToArrayView(ArrayView_t arrayView, const TensorAccessor_t& tensorAccessor)
+	TensorAccessorToArrayView(ArrayView_t arrayView, TensorAccessor_t tensorAccessor)
 	{
 		assert(tensorAccessor.size(0) == t_size_0);
 		for (size_t i = 0; i < t_size_0; ++i)
@@ -134,7 +135,7 @@ struct TensorAccessorToArray
 {
 	typedef torch::TensorAccessor<T, N> TensorAccessor_t;
 	typedef Array<Element_t, t_size_0, t_sizes...> Array_t;
-	TensorAccessorToArray(Array_t& array, const TensorAccessor_t& tensorAccessor)
+	TensorAccessorToArray(Array_t& array, TensorAccessor_t tensorAccessor)
 	{
 		assert(tensorAccessor.size(0) == t_size_0);
 		for (size_t i = 0; i < t_size_0; ++i)
@@ -149,7 +150,7 @@ struct TensorAccessorToArray<T, N, Element_t, t_size_0, t_size_1, t_sizes...>
 {
 	typedef torch::TensorAccessor<T, N> TensorAccessor_t;
 	typedef Array<Element_t, t_size_0, t_size_1, t_sizes...> Array_t;
-	TensorAccessorToArray(Array_t& array, const TensorAccessor_t& tensorAccessor)
+	TensorAccessorToArray(Array_t& array, TensorAccessor_t tensorAccessor)
 	{
 		assert(tensorAccessor.size(0) == t_size_0);
 		for (size_t i = 0; i < t_size_0; ++i)
@@ -159,49 +160,51 @@ struct TensorAccessorToArray<T, N, Element_t, t_size_0, t_size_1, t_sizes...>
 	}
 };
 
-template<typename T, size_t N, typename Element_t, size_t... t_sizes>
-inline void Tensor_Assign(torch::TensorAccessor<T, N>& tensorAccessor, ArrayConstView<Element_t, t_sizes...> arrayView)
-{
-	ArrayConstViewToTensorAccessor<T, N, Element_t, t_sizes...>(tensorAccessor, arrayView);
-}
-
-template<typename T, size_t N, typename Element_t, size_t... t_sizes>
-inline void Tensor_Assign(torch::TensorAccessor<T, N>& tensorAccessor, ArrayView<Element_t, t_sizes...> arrayView)
-{
-	ArrayViewToTensorAccessor<T, N, Element_t, t_sizes...>(tensorAccessor, arrayView);
-}
-
-template<typename T, size_t N, typename Element_t, size_t... t_sizes>
-inline void Tensor_Assign(torch::TensorAccessor<T, N>& tensorAccessor, const Array<Element_t, t_sizes...>& array)
-{
-	ArrayToTensorAccessor<T, N, Element_t, t_sizes...>(tensorAccessor, array);
-}
-
-template<typename T>//, typename Element_t>
-inline void Tensor_Assign(torch::TensorAccessor<T, 1>& tensorAccessor, float value)
+template<typename T, typename U>
+inline void Tensor_Assign(torch::TensorAccessor<T, 1> tensorAccessor, U value)
 {
 	assert(tensorAccessor.size(0) == 1);
 	tensorAccessor[0] = value;
 }
 
+template<typename T, typename U>
+inline void Tensor_Assign(U& value, torch::TensorAccessor<T, 1> tensorAccessor)
+{
+	assert(tensorAccessor.size(0) == 1);
+	value = tensorAccessor[0];
+}
+
 template<typename T, size_t N, typename Element_t, size_t... t_sizes>
-inline void Tensor_Assign(ArrayView<Element_t, t_sizes...> arrayView, const torch::TensorAccessor<T, N>& tensorAccessor)
+inline void Tensor_Assign(torch::TensorAccessor<T, N> tensorAccessor, ArrayConstView<Element_t, t_sizes...> arrayView)
+{
+	ArrayConstViewToTensorAccessor<T, N, Element_t, t_sizes...>(tensorAccessor, arrayView);
+}
+
+template<typename T, size_t N, typename Element_t, size_t... t_sizes>
+inline void Tensor_Assign(torch::TensorAccessor<T, N> tensorAccessor, ArrayView<Element_t, t_sizes...> arrayView)
+{
+	ArrayViewToTensorAccessor<T, N, Element_t, t_sizes...>(tensorAccessor, arrayView);
+}
+
+template<typename T, size_t N, typename Element_t, size_t... t_sizes>
+inline void Tensor_Assign(torch::TensorAccessor<T, N> tensorAccessor, const Array<Element_t, t_sizes...>& array)
+{
+	ArrayToTensorAccessor<T, N, Element_t, t_sizes...>(tensorAccessor, array);
+}
+
+template<typename T, size_t N, typename Element_t, size_t... t_sizes>
+inline void Tensor_Assign(ArrayView<Element_t, t_sizes...> arrayView, torch::TensorAccessor<T, N> tensorAccessor)
 {
 	TensorAccessorToArrayView<T, N, Element_t, t_sizes...>(arrayView, tensorAccessor);
 }
 
 template<typename T, size_t N, typename Element_t, size_t... t_sizes>
-inline void Tensor_Assign(Array<Element_t, t_sizes...>& array, const torch::TensorAccessor<T, N>& tensorAccessor)
+inline void Tensor_Assign(Array<Element_t, t_sizes...>& array, torch::TensorAccessor<T, N> tensorAccessor)
 {
 	TensorAccessorToArray<T, N, Element_t, t_sizes...>(array, tensorAccessor);
 }
 
-template<typename T, typename Element_t>
-inline void Tensor_Assign(Element_t& value, const torch::TensorAccessor<T, 1>& tensorAccessor)
-{
-	assert(tensorAccessor.size(0) == 1);
-	value = tensorAccessor[0];
-}
+
 
 template<typename Element_t, typename TensorScalar_t>
 Tensor NN_makeTensor(TensorScalar_t dtype, uint32_t batchSize)
@@ -217,25 +220,25 @@ Tensor NN_makeTensor(TensorScalar_t dtype, uint32_t batchSize)
 	return tensor;
 }
 
-template<typename Network_t, typename State_t>
-inline float NN_getStateValue(Network_t& network, const State_t& state)
-{
-	auto shape = Array_Shape<State_t>::shape();
-	std::array<int64_t, Array_Dimension<State_t>::dim() + 1> tensorShape;
-	tensorShape[0] = 1;
-	for (size_t i = 0; i < State_t::t_dim; ++i)
-	{
-		tensorShape[i + 1] = shape[i];
-	}
-	torch::Tensor stateTensor = torch::empty(tensorShape, torch::TensorOptions().dtype(torch::kFloat32));
-	auto stateAccessor = stateTensor.accessor<float, Array_Dimension<State_t>::dim() + 1>();
-	Tensor_Assign(stateAccessor[0], state);
-	torch::Tensor valueTensor = network->forward(stateTensor);
-	auto valueAccessor = valueTensor.accessor<int64_t, 2>();
-	float value;
-	Tensor_Assign(value, valueAccessor[0]);
-	return value;
-}
+// template<typename Network_t, typename State_t>
+// inline float NN_getStateValue(Network_t& network, const State_t& state)
+// {
+// 	auto shape = Array_Shape<State_t>::shape();
+// 	std::array<int64_t, Array_Dimension<State_t>::dim() + 1> tensorShape;
+// 	tensorShape[0] = 1;
+// 	for (size_t i = 0; i < State_t::t_dim; ++i)
+// 	{
+// 		tensorShape[i + 1] = shape[i];
+// 	}
+// 	torch::Tensor stateTensor = torch::empty(tensorShape, torch::TensorOptions().dtype(torch::kFloat32));
+// 	auto stateAccessor = stateTensor.accessor<float, Array_Dimension<State_t>::dim() + 1>();
+// 	Tensor_Assign(stateAccessor[0], state);
+// 	torch::Tensor valueTensor = network->forward(stateTensor);
+// 	auto valueAccessor = valueTensor.accessor<int64_t, 2>();
+// 	float value;
+// 	Tensor_Assign(value, valueAccessor[0]);
+// 	return value;
+// }
 
 template<typename Network_t, typename State_t>
 inline void NN_getStateValues(std::vector<float>& values, Network_t& network, const State_t& state)

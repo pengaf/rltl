@@ -54,7 +54,7 @@ template<typename Element_t>
 class Space : public paf::Introspectable
 {
 public:
-	typedef Element_t Element_t;
+	//typedef Element_t Element_t;
 public:
 	virtual SpaceCategory category() = 0;
 	//virtual Element_t sample() = 0;
@@ -85,7 +85,7 @@ template<typename Element_t>
 class VectorSpace : public Space<Element_t>
 {
 public:
-	typedef Element_t Element_t;
+	//typedef Element_t Element_t;
 public:
 	VectorSpace(Element_t low, Element_t high) :
 		m_low(low),
@@ -114,7 +114,7 @@ template<typename Element_t>
 class ImageSpace : public Space<Element_t>
 {
 public:
-	typedef Element_t Element_t;
+	//typedef Element_t Element_t;
 public:
 	SpaceCategory category()
 	{
@@ -139,8 +139,8 @@ template<typename State_t, typename Action_t>
 class Environment : public paf::Introspectable
 {
 public:
-	typedef State_t State_t;
-	typedef Action_t Action_t;
+	//typedef State_t State_t;
+	//typedef Action_t Action_t;
 	typedef Space<State_t> StateSpace_t;
 	typedef Space<Action_t> ActionSpace_t;
 	typedef paf::SharedPtr<StateSpace_t> StateSpacePtr;
@@ -158,8 +158,8 @@ template<typename State_t, typename Action_t>
 class ActionValueFunction : public paf::Introspectable
 {
 public:
-	typedef State_t State_t;
-	typedef Action_t Action_t;
+	//typedef State_t State_t;
+	//typedef Action_t Action_t;
 public:
 	virtual Action_t maxAction(const State_t& state, bool firstMax = true) = 0;
 	virtual void getValues(std::vector<float>& values, const State_t& state) = 0;
@@ -177,7 +177,7 @@ template<typename State_t>
 class StateValueFunction : public paf::Introspectable
 {
 public:
-	typedef State_t State_t;
+	//typedef State_t State_t;
 public:
 	virtual float getValue(const State_t& state) = 0;
 };
@@ -186,8 +186,8 @@ template<typename State_t, typename Action_t>
 class PolicyFunction : public paf::Introspectable
 {
 public:
-	typedef State_t State_t;
-	typedef Action_t Action_t;
+	//typedef State_t State_t;
+	//typedef Action_t Action_t;
 public:
 	virtual Action_t takeAction(const State_t& state) = 0;
 	virtual uint32_t actionCount() const = 0;
@@ -242,8 +242,8 @@ template<typename State_t, typename Action_t>
 class Agent : public paf::Introspectable
 {
 public:
-	typedef State_t State_t;
-	typedef Action_t Action_t;
+	//typedef State_t State_t;
+	//typedef Action_t Action_t;
 public:
 	virtual Action_t firstStep(const State_t& firstState) = 0;
 	virtual Action_t nextStep(float reward, const State_t& nextState) = 0;

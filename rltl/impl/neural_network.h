@@ -3,6 +3,7 @@
 #include "array.h"
 #include "random.h"
 #include <string>
+#include <type_traits>
 
 BEGIN_RLTL_IMPL
 
@@ -160,14 +161,14 @@ struct TensorAccessorToArray<T, N, Element_t, t_size_0, t_size_1, t_sizes...>
 	}
 };
 
-template<typename T, typename U>
+template<typename T, typename U, std::enable_if_t<std::is_arithmetic_v<U>, int> = 0>
 inline void Tensor_Assign(torch::TensorAccessor<T, 1> tensorAccessor, U value)
 {
 	assert(tensorAccessor.size(0) == 1);
 	tensorAccessor[0] = value;
 }
 
-template<typename T, typename U>
+template<typename T, typename U, std::enable_if_t<std::is_arithmetic_v<U>, int> = 0>
 inline void Tensor_Assign(U& value, torch::TensorAccessor<T, 1> tensorAccessor)
 {
 	assert(tensorAccessor.size(0) == 1);
